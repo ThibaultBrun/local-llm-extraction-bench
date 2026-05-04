@@ -367,8 +367,14 @@ def main():
 
     print("Modeles testes:", ", ".join(models_to_test) if models_to_test else "aucun")
 
+    total_runs = len(models_to_test) * len(annonces)
+    current_run = 0
+
     for model in models_to_test:
         for name, annonce in annonces.items():
+            current_run += 1
+            percent = current_run / total_runs if total_runs else 0
+            print(f"[{current_run}/{total_runs}] {percent:.0%} - {model} / {name}")
             results.append(
                 extract_annonce(
                     model=model,
