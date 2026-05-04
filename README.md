@@ -66,3 +66,16 @@ Combiner les options :
 ```powershell
 python .\benchmark_extraction.py --model qwen2.5:7b --limit 5 --details
 ```
+
+## Resultats actuels
+
+Benchmark sur 23 annonces, soit 322 champs compares par modele.
+
+| Modele | Score | Taux | Temps |
+| --- | ---: | ---: | ---: |
+| `llama3.2:3b` | 160/322 | 50% | 98.72s |
+| `gemma3:4b` | 150/322 | 47% | 79.72s |
+| `mistral:7b` | 149/322 | 46% | 2098.61s |
+| `qwen2.5:7b` | 148/322 | 46% | 151.66s |
+
+Ces premiers resultats sont volontairement stricts : chaque champ doit correspondre a la valeur attendue apres normalisation simple. Ils montrent surtout que le prompt et le post-traitement doivent encore etre ameliores avant d'obtenir une extraction fiable.
