@@ -1,0 +1,37 @@
+{
+  "modeles": [
+    {
+      "marque": "Orbea",
+      "modele": "Rise",
+      "versions": ["H10", "H15", "H20", "H30", "M10", "M-Team", "M-LTD"],
+      "annee_debut": 2021,
+      "annee_fin": null,
+      "type_velo": "VTTAE",
+      "categorie": "all-mountain",
+      "taille_roues_standard": "29",
+      "aliases": ["rise"]
+    },
+    {
+      "marque": "Commencal",
+      "modele": "Clash",
+      "versions": [],
+      "annee_debut": 2019,
+      "annee_fin": null,
+      "type_velo": "VTT junior",
+      "categorie": "junior",
+      "taille_roues_standard": "24",
+      "aliases": ["clash"]
+    },
+    {
+      "marque": "Commencal",
+      "modele": "Meta",
+      "versions": ["5.0", "AM", "TR", "SX", "HT", "Power"],
+      "annee_debut": 2005,
+      "annee_fin": null,
+      "type_velo": "VTT",
+      "categorie": "all-mountain",
+      "taille_roues_standard": "29",
+      "aliases": ["meta"]
+    }
+  ]
+}
