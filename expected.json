@@ -2,116 +2,139 @@
   "orbea_rise_h10": {
     "marque": "Orbea",
     "modele": "Rise",
-    "annee": null
+    "annee": null,
+    "taille": "XL"
   },
   "commencal_clash_24": {
     "marque": "Commencal",
     "modele": "Clash",
-    "annee": null
+    "annee": null,
+    "taille": null
   },
   "commencal_meta_5": {
     "marque": "Commencal",
     "modele": "Meta",
-    "annee": null
+    "annee": null,
+    "taille": null
   },
   "supabase_3191580802": {
     "marque": "Mondraker",
     "modele": "Chaser 750Wh",
-    "annee": 2024
+    "annee": 2024,
+    "taille": "L"
   },
   "supabase_3191424021": {
     "marque": "Specialized",
     "modele": "S-Works Stumpjumper EVO",
-    "annee": 2024
+    "annee": 2024,
+    "taille": "M"
   },
   "supabase_3191479873": {
     "marque": "Canyon",
     "modele": "Neuron AL 29",
-    "annee": 2017
+    "annee": 2017,
+    "taille": "M"
   },
   "supabase_3191587095": {
     "marque": "Ghost",
     "modele": "E-Riot AM Universal",
-    "annee": 2023
+    "annee": 2023,
+    "taille": "S"
   },
   "supabase_3191567156": {
     "marque": "Giant",
     "modele": "Reign E+3",
-    "annee": 2022
+    "annee": 2022,
+    "taille": "M"
   },
   "supabase_3191406022": {
     "marque": "Giant",
     "modele": "Talon E+ Junior 26",
-    "annee": 2024
+    "annee": 2024,
+    "taille": "U"
   },
   "supabase_3191437852": {
     "marque": "Megamo",
     "modele": "Native 20",
-    "annee": 2024
+    "annee": 2024,
+    "taille": "M"
   },
   "supabase_3191345285": {
     "marque": "Decathlon / Rockrider",
     "modele": "XC100",
-    "annee": null
+    "annee": null,
+    "taille": "XL"
   },
   "supabase_3191461887": {
     "marque": "Ghost",
     "modele": "Kato FS",
-    "annee": 2020
+    "annee": 2020,
+    "taille": "M"
   },
   "supabase_3191466283": {
     "marque": "Focus",
     "modele": "SAM² 6.9",
-    "annee": 2022
+    "annee": 2022,
+    "taille": "S"
   },
   "supabase_3191365690": {
     "marque": "Decathlon",
     "modele": "Stillus Offroad",
-    "annee": 2024
+    "annee": 2024,
+    "taille": "S"
   },
   "supabase_3191549223": {
     "marque": "KTM",
     "modele": "Macina Race SX 20",
-    "annee": 2025
+    "annee": 2025,
+    "taille": "XL"
   },
   "supabase_3191588200": {
     "marque": "Giant",
     "modele": "Anthem X",
-    "annee": 2026
+    "annee": 2026,
+    "taille": "M"
   },
   "supabase_3191325044": {
     "marque": "Sunn",
     "modele": "Radical Finest",
-    "annee": 2025
+    "annee": 2025,
+    "taille": "M"
   },
   "supabase_3191293007": {
     "marque": "Commencal",
     "modele": "Meta AM 29 (probable)",
-    "annee": 2022
+    "annee": 2022,
+    "taille": "M"
   },
   "supabase_3191372102": {
     "marque": "YT",
     "modele": "Jeffsy édition limitée",
-    "annee": 2025
+    "annee": 2025,
+    "taille": "L"
   },
   "supabase_3191444457": {
     "marque": "CUBE",
     "modele": "Reaction Hybrid SLX 750",
-    "annee": 2023
+    "annee": 2023,
+    "taille": "L"
   },
   "supabase_3191477283": {
     "marque": "Cannondale",
     "modele": "Scalpel 4",
-    "annee": 2025
+    "annee": 2025,
+    "taille": "M"
   },
   "supabase_3191461041": {
     "marque": "Cannondale",
     "modele": "Jekyll 4",
-    "annee": 2020
+    "annee": 2020,
+    "taille": "L"
   },
   "supabase_3191487036": {
     "marque": "CUBE",
     "modele": "Stereo Hybrid 140 HPC Race 750",
-    "annee": 2023
+    "annee": 2023,
+    "taille": "L"
   }
 }

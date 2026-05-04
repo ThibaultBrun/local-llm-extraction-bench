@@ -209,6 +209,7 @@ FIELDS = [
     "marque",
     "modele",
     "annee",
+    "taille",
 ]
 
 schema = {
@@ -217,6 +218,7 @@ schema = {
         "marque": {"type": ["string", "null"], "description": "Marque du velo, meme si elle apparait seulement dans le titre."},
         "modele": {"type": ["string", "null"], "description": "Nom commercial du modele, sans la marque."},
         "annee": {"type": ["integer", "null"], "description": "Annee du velo ou du modele si elle est explicitement presente dans l'annonce."},
+        "taille": {"type": ["string", "null"], "description": "Taille du cadre, par exemple S, M, L, XL ou U. Ne jamais mettre la taille des roues ici."},
     },
     "required": FIELDS,
     "additionalProperties": False,
@@ -224,7 +226,7 @@ schema = {
 
 def build_prompt(annonce):
     return f"""
-Extrais la marque, le modele et l'annee de cette annonce de velo.
+Extrais la marque, le modele, l'annee et la taille de cette annonce de velo.
 
 Regles :
 - Retourne uniquement un objet JSON valide.
@@ -233,7 +235,9 @@ Regles :
 - N'invente pas d'information.
 - Le modele est le nom commercial sans la marque.
 - L'annee doit etre un entier.
+- La taille correspond a la taille du cadre, par exemple S, M, L, XL ou U.
 - Ne confonds pas une taille de roues ou une taille de cadre avec une annee.
+- Ne confonds pas la taille du cadre avec la taille des roues.
 - La marque apparait souvent au debut du titre ou de la description.
 
 Annonce :
