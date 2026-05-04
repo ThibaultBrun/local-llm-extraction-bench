@@ -26,18 +26,52 @@ def normalize_text(value):
     return value.lower().replace('"', " pouces")
 
 
+def annonce_text(annonce):
+    if isinstance(annonce, str):
+        return annonce
+
+    parts = []
+    if annonce.get("subject"):
+        parts.append(f"Titre original\n{annonce['subject']}")
+    if annonce.get("body"):
+        parts.append(f"Description complete\n{annonce['body']}")
+    return "\n\n".join(parts)
+
+
+def annonce_attributes(annonce):
+    if isinstance(annonce, dict):
+        return annonce.get("attributes") or {}
+    return {}
+
+
+def render_annonce(annonce):
+    text = annonce_text(annonce)
+    attributes = annonce_attributes(annonce)
+    if not attributes:
+        return text
+
+    return f"{text}\n\nAttributs Leboncoin\n{json.dumps(attributes, ensure_ascii=False)}"
+
+
 def find_brand(annonce):
-    text = normalize_text(annonce)
+    text = normalize_text(annonce_text(annonce))
     for brand in KNOWN_BRANDS:
         if brand.lower() in text:
             return brand
     return None
 
 
+def find_attribute_frame_size(annonce):
+    frame_size = annonce_attributes(annonce).get("bicycle_size")
+    if not frame_size:
+        return None
+    return str(frame_size).upper()
+
+
 def find_frame_size(annonce):
     match = re.search(
         r"\b(?:taille|cadre|en)\s+(XS|S|M|L|XL|XXL)\b",
-        annonce,
+        annonce_text(annonce),
         flags=re.IGNORECASE,
     )
     if not match:
@@ -46,7 +80,7 @@ def find_frame_size(annonce):
 
 
 def find_known_model(annonce):
-    text = normalize_text(annonce)
+    text = normalize_text(annonce_text(annonce))
 
     for item in CATALOGUE["modeles"]:
         if item["marque"].lower() not in text:
@@ -67,14 +101,14 @@ def find_known_model(annonce):
 
 
 def find_year(annonce):
-    matches = re.findall(r"\b(20[0-3]\d)\b", annonce)
+    matches = re.findall(r"\b(20[0-3]\d)\b", annonce_text(annonce))
     if not matches:
         return None
     return int(matches[0])
 
 
 def find_wheel_size(annonce):
-    text = normalize_text(annonce)
+    text = normalize_text(annonce_text(annonce))
     match = re.search(r"(?<!\d)(\d{2}(?:[.,]\d)?)\s*pouces\b", text)
     if not match:
         return None
@@ -85,7 +119,7 @@ def find_wheel_size(annonce):
 
 
 def find_declared_state(annonce):
-    text = normalize_text(annonce)
+    text = normalize_text(annonce_text(annonce))
     if "quasiment neuf" in text:
         return "quasiment neuf"
     if "excellent etat" in text:
@@ -98,7 +132,8 @@ def find_declared_state(annonce):
 
 
 def post_process(data, annonce):
-    normalized_annonce = normalize_text(annonce)
+    text = annonce_text(annonce)
+    normalized_annonce = normalize_text(text)
 
     brand = find_brand(annonce)
     if brand:
@@ -114,7 +149,7 @@ def post_process(data, annonce):
     if year:
         data["annee"] = year
 
-    frame_size = find_frame_size(annonce)
+    frame_size = find_attribute_frame_size(annonce) or find_frame_size(annonce)
     if frame_size:
         data["taille"] = frame_size
 
@@ -136,7 +171,7 @@ def post_process(data, annonce):
     if isinstance(data.get("version"), str) and "pouce" in data["version"].lower():
         data["version"] = None
 
-    if re.search(r"\bfox\s+float\s+r\b", annonce, flags=re.IGNORECASE):
+    if re.search(r"\bfox\s+float\s+r\b", text, flags=re.IGNORECASE):
         data["amortisseur"] = "Fox Float R"
 
     if data.get("transmission") == "Derailleur arriere" and "derailleur" not in normalized_annonce:
@@ -269,7 +304,7 @@ Regles :
 - La marque apparait souvent au debut du titre ou de la description.
 
 Annonce :
-{annonce}
+{render_annonce(annonce)}
 """
 
 

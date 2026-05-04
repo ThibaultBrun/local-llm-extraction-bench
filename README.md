@@ -81,6 +81,8 @@ Chaque appel Ollama a un timeout de 30 secondes par defaut. Si un modele depasse
 
 La sortie finale affiche aussi les taux de reussite par champ, globalement et pour chaque modele.
 
+Pour la taille du cadre, le post-traitement utilise `attributes.bicycle_size` en priorite quand l'information existe, puis cherche dans le titre et la description seulement en fallback.
+
 ## Resultats actuels
 
 Benchmark sur 23 annonces avec extraction de `marque`, `modele`, `annee` et `taille`.
