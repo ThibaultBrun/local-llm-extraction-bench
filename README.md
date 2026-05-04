@@ -2,7 +2,7 @@
 
 Benchmark d'extraction structuree avec des LLM locaux via Ollama.
 
-Le projet compare plusieurs modeles IA locaux sur un jeu d'annonces et calcule un taux de reussite sur quatre champs simples : `marque`, `modele`, `annee`, `taille`.
+Le projet compare plusieurs modeles IA locaux sur un jeu d'annonces et calcule un taux de reussite sur cinq champs simples : `marque`, `modele`, `annee`, `taille`, `taille_roues`.
 
 ## Fichiers
 
@@ -75,7 +75,7 @@ python .\benchmark_extraction.py --timeout 30
 
 ## Benchmark
 
-Le benchmark actuel compare 23 annonces, soit 92 champs par modele.
+Le benchmark actuel compare 23 annonces, soit 115 champs par modele.
 
 Chaque appel Ollama a un timeout de 30 secondes par defaut. Si un modele depasse ce delai ou renvoie un JSON invalide, l'annonce est comptee comme KO pour ce modele.
 
@@ -83,9 +83,13 @@ La sortie finale affiche aussi les taux de reussite par champ, globalement et po
 
 Pour la taille du cadre, le post-traitement utilise `attributes.bicycle_size` en priorite quand l'information existe, puis cherche dans le titre et la description seulement en fallback.
 
-## Resultats actuels
+Pour la taille des roues, le post-traitement applique la meme logique avec `attributes.bicycle_wheel_size`, puis normalise la valeur sans unite.
+
+## Resultats precedents
 
 Benchmark sur 23 annonces avec extraction de `marque`, `modele`, `annee` et `taille`.
+
+Ces resultats datent du benchmark a 4 champs, avant l'ajout de `taille_roues`.
 
 | Modele | Score | Taux | Temps |
 | --- | ---: | ---: | ---: |

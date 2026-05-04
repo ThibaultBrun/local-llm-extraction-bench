@@ -68,6 +68,21 @@ def find_attribute_frame_size(annonce):
     return str(frame_size).upper()
 
 
+def find_attribute_wheel_size(annonce):
+    wheel_size = annonce_attributes(annonce).get("bicycle_wheel_size")
+    if not wheel_size:
+        return None
+
+    match = re.search(r"(?<!\d)(\d{2}(?:[.,]\d)?)", str(wheel_size))
+    if not match:
+        return None
+
+    normalized = match.group(1).replace(",", ".")
+    if normalized not in ALLOWED_WHEEL_SIZES:
+        return None
+    return normalized
+
+
 def find_frame_size(annonce):
     match = re.search(
         r"\b(?:taille|cadre|en)\s+(XS|S|M|L|XL|XXL)\b",
@@ -153,7 +168,7 @@ def post_process(data, annonce):
     if frame_size:
         data["taille"] = frame_size
 
-    wheel_size = find_wheel_size(annonce)
+    wheel_size = find_attribute_wheel_size(annonce) or find_wheel_size(annonce)
     if wheel_size:
         data["taille_roues"] = wheel_size
         if isinstance(data.get("modele"), str):
@@ -273,6 +288,7 @@ FIELDS = [
     "modele",
     "annee",
     "taille",
+    "taille_roues",
 ]
 
 schema = {
@@ -282,6 +298,7 @@ schema = {
         "modele": {"type": ["string", "null"], "description": "Nom commercial du modele, sans la marque."},
         "annee": {"type": ["integer", "null"], "description": "Annee du velo ou du modele si elle est explicitement presente dans l'annonce."},
         "taille": {"type": ["string", "null"], "description": "Taille du cadre, par exemple S, M, L, XL ou U. Ne jamais mettre la taille des roues ici."},
+        "taille_roues": {"type": ["string", "null"], "description": "Diametre des roues sans unite. Valeurs autorisees : 12, 14, 16, 18, 20, 24, 26, 27.5, 28, 29."},
     },
     "required": FIELDS,
     "additionalProperties": False,
@@ -289,7 +306,7 @@ schema = {
 
 def build_prompt(annonce):
     return f"""
-Extrais la marque, le modele, l'annee et la taille de cette annonce de velo.
+Extrais la marque, le modele, l'annee, la taille du cadre et la taille des roues de cette annonce de velo.
 
 Regles :
 - Retourne uniquement un objet JSON valide.
@@ -299,6 +316,8 @@ Regles :
 - Le modele est le nom commercial sans la marque.
 - L'annee doit etre un entier.
 - La taille correspond a la taille du cadre, par exemple S, M, L, XL ou U.
+- La taille_roues correspond au diametre des roues.
+- Pour taille_roues, retourne uniquement la valeur normalisee sans unite : 12, 14, 16, 18, 20, 24, 26, 27.5, 28 ou 29.
 - Ne confonds pas une taille de roues ou une taille de cadre avec une annee.
 - Ne confonds pas la taille du cadre avec la taille des roues.
 - La marque apparait souvent au debut du titre ou de la description.
