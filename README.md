@@ -79,6 +79,8 @@ Le benchmark actuel compare 23 annonces, soit 92 champs par modele.
 
 Chaque appel Ollama a un timeout de 30 secondes par defaut. Si un modele depasse ce delai ou renvoie un JSON invalide, l'annonce est comptee comme KO pour ce modele.
 
+La sortie finale affiche aussi les taux de reussite par champ, globalement et pour chaque modele.
+
 ## Resultats actuels
 
 Benchmark sur 23 annonces avec extraction de `marque`, `modele`, `annee` et `taille`.

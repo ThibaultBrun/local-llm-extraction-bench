@@ -205,6 +205,34 @@ def print_score(score):
         )
 
 
+def field_scores(results):
+    scores = {field: {"correct": 0, "total": 0} for field in FIELDS}
+
+    for result in results:
+        details = result["score"]["details"]
+        if details:
+            for detail in details:
+                scores[detail["field"]]["total"] += 1
+                if detail["ok"]:
+                    scores[detail["field"]]["correct"] += 1
+        elif result["score"]["total"]:
+            for field in FIELDS:
+                scores[field]["total"] += 1
+
+    return scores
+
+
+def print_field_scores(results, title):
+    print(f"\n=== {title} ===")
+    scores = field_scores(results)
+
+    for field in FIELDS:
+        correct = scores[field]["correct"]
+        total = scores[field]["total"]
+        rate = correct / total if total else 0
+        print(f"{field}: {correct}/{total} ({rate:.0%})")
+
+
 FIELDS = [
     "marque",
     "modele",
@@ -405,6 +433,13 @@ def main():
             total_duration = sum(result["duration"] for result in model_results)
             rate = total_correct / total_fields if total_fields else 0
             print(f"{model}: {total_correct}/{total_fields} ({rate:.0%}) en {total_duration:.2f}s")
+
+        print_field_scores(results, "Scores par champ")
+
+        print("\n=== Scores par champ et modele ===")
+        for model in models_to_test:
+            model_results = [result for result in results if result["model"] == model]
+            print_field_scores(model_results, model)
 
 
 if __name__ == "__main__":
