@@ -66,6 +66,13 @@ def find_known_model(annonce):
     return None, None
 
 
+def find_year(annonce):
+    matches = re.findall(r"\b(20[0-3]\d)\b", annonce)
+    if not matches:
+        return None
+    return int(matches[0])
+
+
 def find_wheel_size(annonce):
     text = normalize_text(annonce)
     match = re.search(r"(?<!\d)(\d{2}(?:[.,]\d)?)\s*pouces\b", text)
@@ -102,6 +109,10 @@ def post_process(data, annonce):
         data["modele"] = model
     if version:
         data["version"] = version
+
+    year = find_year(annonce)
+    if year:
+        data["annee"] = year
 
     frame_size = find_frame_size(annonce)
     if frame_size:
@@ -197,37 +208,15 @@ def print_score(score):
 FIELDS = [
     "marque",
     "modele",
-    "version",
-    "taille",
-    "type_velo",
-    "moteur",
-    "batterie_wh",
-    "fourche",
-    "amortisseur",
-    "transmission",
-    "freins",
-    "roues",
-    "taille_roues",
-    "etat_declare",
+    "annee",
 ]
 
 schema = {
     "type": "object",
     "properties": {
         "marque": {"type": ["string", "null"], "description": "Marque du velo, meme si elle apparait seulement dans le titre."},
-        "modele": {"type": ["string", "null"], "description": "Nom commercial du modele, par exemple Rise."},
-        "version": {"type": ["string", "null"], "description": "Finition ou variante du modele, par exemple H10. Ne pas inclure la taille du cadre ni la taille des roues."},
-        "taille": {"type": ["string", "null"], "description": "Taille du cadre, par exemple S, M, L, XL. Ne jamais mettre la taille des roues ici."},
-        "type_velo": {"type": ["string", "null"], "description": "Categorie du velo, par exemple VTT electrique."},
-        "moteur": {"type": ["string", "null"], "description": "Reference du moteur."},
-        "batterie_wh": {"type": ["integer", "null"], "description": "Capacite de batterie en Wh, nombre seul."},
-        "fourche": {"type": ["string", "null"], "description": "Reference complete de la fourche."},
-        "amortisseur": {"type": ["string", "null"], "description": "Reference complete de l'amortisseur ou suspension arriere."},
-        "transmission": {"type": ["string", "null"], "description": "Reference du derailleur ou groupe de transmission seulement si elle est explicitement mentionnee."},
-        "freins": {"type": ["string", "null"], "description": "Reference des freins seulement si elle est explicitement mentionnee, avec dimensions de disques si presentes."},
-        "roues": {"type": ["string", "null"], "description": "Reference des roues."},
-        "taille_roues": {"type": ["string", "null"], "description": "Diametre des roues sans unite. Valeurs autorisees : 12, 14, 16, 18, 20, 24, 26, 27.5, 28, 29. Ne pas confondre avec la taille du cadre."},
-        "etat_declare": {"type": ["string", "null"], "description": "Etat annonce par le vendeur."},
+        "modele": {"type": ["string", "null"], "description": "Nom commercial du modele, sans la marque."},
+        "annee": {"type": ["integer", "null"], "description": "Annee du velo ou du modele si elle est explicitement presente dans l'annonce."},
     },
     "required": FIELDS,
     "additionalProperties": False,
@@ -235,24 +224,17 @@ schema = {
 
 def build_prompt(annonce):
     return f"""
-Extrais les informations techniques de cette annonce VTT.
+Extrais la marque, le modele et l'annee de cette annonce de velo.
 
 Regles :
 - Retourne uniquement un objet JSON valide.
 - Remplis toutes les cles du schema.
 - Si une information n'est pas presente dans l'annonce, utilise null.
 - N'invente pas d'information.
-- Pour batterie_wh, retourne uniquement le nombre de Wh.
-- Le modele est le nom principal, la version est la finition. Par exemple, dans un nom comme "Marque Modele Finition", ne mets pas la finition dans modele.
-- Une taille de roues n'est jamais une version.
-- Un derailleur arriere indique la transmission.
-- Ne deduis pas des composants absents : pas de freins, transmission, fourche ou amortisseur si aucune reference n'est ecrite.
-- Conserve les details utiles explicitement presents, comme les tailles de disques de frein.
-- La taille_roues correspond au diametre des roues, pas a la taille du cadre.
-- Une valeur en pouces est une taille de roues sauf indication contraire explicite.
-- Pour taille_roues, retourne uniquement la valeur normalisee sans unite : 12, 14, 16, 18, 20, 24, 26, 27.5, 28 ou 29.
+- Le modele est le nom commercial sans la marque.
+- L'annee doit etre un entier.
+- Ne confonds pas une taille de roues ou une taille de cadre avec une annee.
 - La marque apparait souvent au debut du titre ou de la description.
-- Les expressions comme "neuf", "quasiment neuf", "excellent etat" indiquent etat_declare.
 
 Annonce :
 {annonce}
@@ -281,21 +263,35 @@ def select_models_to_test(requested_models=None):
     return installed
 
 
-def extract_annonce(model, name, annonce, expected, show_details):
+def extract_annonce(model, name, annonce, expected, show_details, timeout):
     start = time.time()
+    client = ollama.Client(timeout=timeout)
 
-    response = ollama.chat(
-        model=model,
-        messages=[
-            {
-                "role": "system",
-                "content": "Tu es un extracteur d'informations. Tu reponds uniquement en JSON strict.",
-            },
-            {"role": "user", "content": build_prompt(annonce)},
-        ],
-        format=schema,
-        options={"temperature": 0},
-    )
+    try:
+        response = client.chat(
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Tu es un extracteur d'informations. Tu reponds uniquement en JSON strict.",
+                },
+                {"role": "user", "content": build_prompt(annonce)},
+            ],
+            format=schema,
+            options={"temperature": 0},
+        )
+    except Exception as e:
+        duration = time.time() - start
+        if show_details:
+            print(f"\nErreur appel Ollama: {e}")
+        return {
+            "model": model,
+            "annonce": name,
+            "duration": duration,
+            "ok": False,
+            "score": {"correct": 0, "total": len(FIELDS), "rate": 0, "details": []},
+            "error": str(e),
+        }
 
     duration = time.time() - start
 
@@ -341,10 +337,11 @@ def extract_annonce(model, name, annonce, expected, show_details):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Benchmark d'extraction VTT avec Ollama.")
+    parser = argparse.ArgumentParser(description="Benchmark d'extraction avec Ollama.")
     parser.add_argument("--details", action="store_true", help="Affiche les JSON et les erreurs champ par champ.")
     parser.add_argument("--model", action="append", help="Modele Ollama a tester. Peut etre repete.")
     parser.add_argument("--limit", type=int, help="Nombre maximum d'annonces a tester.")
+    parser.add_argument("--timeout", type=float, default=30, help="Timeout par appel Ollama en secondes.")
     parser.add_argument("--annonces", default="annonces.json", help="Fichier JSON des annonces.")
     parser.add_argument("--expected", default="expected.json", help="Fichier JSON des resultats attendus.")
     return parser.parse_args()
@@ -382,6 +379,7 @@ def main():
                     annonce=annonce,
                     expected=expected.get(name),
                     show_details=args.details,
+                    timeout=args.timeout,
                 )
             )
 

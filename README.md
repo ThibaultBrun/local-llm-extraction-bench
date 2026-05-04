@@ -2,7 +2,7 @@
 
 Benchmark d'extraction structuree avec des LLM locaux via Ollama.
 
-Le projet compare plusieurs modeles IA locaux sur un jeu d'annonces et calcule un taux de reussite champ par champ a partir de resultats attendus.
+Le projet compare plusieurs modeles IA locaux sur un jeu d'annonces et calcule un taux de reussite sur trois champs simples : `marque`, `modele`, `annee`.
 
 ## Fichiers
 
@@ -67,15 +67,14 @@ Combiner les options :
 python .\benchmark_extraction.py --model qwen2.5:7b --limit 5 --details
 ```
 
-## Resultats actuels
+Changer le timeout par appel Ollama :
 
-Benchmark sur 23 annonces, soit 322 champs compares par modele.
+```powershell
+python .\benchmark_extraction.py --timeout 30
+```
 
-| Modele | Score | Taux | Temps |
-| --- | ---: | ---: | ---: |
-| `llama3.2:3b` | 160/322 | 50% | 98.72s |
-| `gemma3:4b` | 150/322 | 47% | 79.72s |
-| `mistral:7b` | 149/322 | 46% | 2098.61s |
-| `qwen2.5:7b` | 148/322 | 46% | 151.66s |
+## Benchmark
 
-Ces premiers resultats sont volontairement stricts : chaque champ doit correspondre a la valeur attendue apres normalisation simple. Ils montrent surtout que le prompt et le post-traitement doivent encore etre ameliores avant d'obtenir une extraction fiable.
+Le benchmark actuel compare 23 annonces, soit 69 champs par modele.
+
+Chaque appel Ollama a un timeout de 30 secondes par defaut. Si un modele depasse ce delai ou renvoie un JSON invalide, l'annonce est comptee comme KO pour ce modele.
