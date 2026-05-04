@@ -53,16 +53,16 @@ python .\benchmark_extraction.py --details
 
 ### Classement modèles
 ```
-qwen2.5:7b: 74/115 (64%) en 56.49s
-mistral:7b: 80/115 (70%) en 41.47s
-gemma3:4b: 85/115 (74%) en 37.23s
-llama3.2:3b: 80/115 (70%) en 39.19s
+llama3.2:3b: 85/115 (74%) en 40.98s
+mistral:7b: 88/115 (77%) en 41.62s
+qwen2.5:7b: 81/115 (70%) en 57.69s
+gemma3:4b: 90/115 (78%) en 37.42s
 ```
 
 ### Scores par champ
 ```
 marque: 80/92 (87%)
-modele: 55/92 (60%)
+modele: 80/92 (87%)
 annee: 74/92 (80%)
 taille: 59/92 (64%)
 taille_roues: 51/92 (55%)
@@ -70,40 +70,40 @@ taille_roues: 51/92 (55%)
 
 ### Scores par champ et modèle
 
-#### qwen2.5:7b
+#### llama3.2:3b
 ```
-marque: 18/23 (78%)
-modele: 13/23 (57%)
-annee: 18/23 (78%)
+marque: 20/23 (87%)
+modele: 19/23 (83%)
+annee: 19/23 (83%)
 taille: 15/23 (65%)
-taille_roues: 10/23 (43%)
+taille_roues: 12/23 (52%)
 ```
 
 #### mistral:7b
 ```
 marque: 21/23 (91%)
-modele: 14/23 (61%)
+modele: 19/23 (83%)
 annee: 18/23 (78%)
 taille: 15/23 (65%)
 taille_roues: 12/23 (52%)
 ```
 
+#### qwen2.5:7b
+```
+marque: 18/23 (78%)
+modele: 20/23 (87%)
+annee: 18/23 (78%)
+taille: 15/23 (65%)
+taille_roues: 10/23 (43%)
+```
+
 #### gemma3:4b
 ```
 marque: 21/23 (91%)
-modele: 14/23 (61%)
+modele: 22/23 (96%)
 annee: 19/23 (83%)
 taille: 14/23 (61%)
 taille_roues: 17/23 (74%)
-```
-
-#### llama3.2:3b
-```
-marque: 20/23 (87%)
-modele: 14/23 (61%)
-annee: 19/23 (83%)
-taille: 15/23 (65%)
-taille_roues: 12/23 (52%)
 ```
 
 Tester un seul modele :
