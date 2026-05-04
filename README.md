@@ -78,3 +78,16 @@ python .\benchmark_extraction.py --timeout 30
 Le benchmark actuel compare 23 annonces, soit 92 champs par modele.
 
 Chaque appel Ollama a un timeout de 30 secondes par defaut. Si un modele depasse ce delai ou renvoie un JSON invalide, l'annonce est comptee comme KO pour ce modele.
+
+## Resultats actuels
+
+Benchmark sur 23 annonces avec extraction de `marque`, `modele`, `annee` et `taille`.
+
+| Modele | Score | Taux | Temps |
+| --- | ---: | ---: | ---: |
+| `llama3.2:3b` | 70/92 | 76% | 33.17s |
+| `gemma3:4b` | 69/92 | 75% | 32.46s |
+| `mistral:7b` | 68/92 | 74% | 37.02s |
+| `qwen2.5:7b` | 65/92 | 71% | 49.79s |
+
+Ces resultats mesurent uniquement l'identification directe depuis l'annonce. Les caracteristiques techniques detaillees peuvent ensuite etre enrichies depuis des sources specialisees une fois le modele identifie.
