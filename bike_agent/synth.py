@@ -266,6 +266,8 @@ Tache : remplis TOUS les champs du schema.
 11. cons : 2-4 bullets concis (max ~10 mots/item).
 
 Sois rigoureux. Si l'identite est lacunaire, dis-le dans reasoning et donne une fourchette prudente.
+
+RAPPEL FINAL : reasoning, pros, cons et retail_source doivent etre EN FRANCAIS. Pas un seul mot en anglais.
 """
 
 
@@ -290,12 +292,13 @@ def synthesize_evaluation(
             {
                 "role": "system",
                 "content": (
+                    "REPONDS EN FRANCAIS UNIQUEMENT. Tous les champs textuels (reasoning, pros, cons, "
+                    "retail_source) doivent etre en francais, meme si l'annonce et les sources web "
+                    "sont en anglais. Ne JAMAIS ecrire en anglais. NEVER write in English.\n\n"
                     "Tu es un expert du marche francais d'occasion (velos, VTT, ebikes, junior, route, gravel, BMX). "
                     "Tu evalues une annonce a partir du texte, de l'identite extraite, "
                     "des prix catalogue trouves sur le web, et des annonces LBC similaires. "
-                    "Tu reponds UNIQUEMENT en JSON strict respectant le schema fourni. "
-                    "TOUS les champs textuels (reasoning, pros, cons, retail_source) sont OBLIGATOIREMENT en FRANCAIS, "
-                    "meme quand l'annonce contient des termes techniques anglais (Shimano, Fox, etc.).\n"
+                    "Tu reponds UNIQUEMENT en JSON strict respectant le schema fourni.\n"
                     + DECOTE_RULES_BIKE
                 ),
             },
