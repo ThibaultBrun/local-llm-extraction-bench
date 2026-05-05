@@ -72,6 +72,11 @@ def fetch_lbc_comparables(identity, limit=15, exclude_ad_id=None, verbose=False)
     except ValueError:
         enforce_wheel = False
 
+    # Tier/version filter: a Rise H10 must NOT be compared to a Rise H30 (different
+    # MSRP tier, same model name). Mark each comparable with tier_match so the synth
+    # can weight tier-matched ads higher.
+    version_lower = (identity.get("version") or "").lower().strip()
+
     for raw_ad in (result.ads or []):
         if exclude_ad_id is not None and raw_ad.id == exclude_ad_id:
             continue
@@ -87,6 +92,12 @@ def fetch_lbc_comparables(identity, limit=15, exclude_ad_id=None, verbose=False)
             ad_wheel = attrs.get("bicycle_wheel_size", "")
             if ad_wheel and wheel_target not in str(ad_wheel):
                 continue
+
+        tier_match = None
+        if version_lower:
+            haystack = f"{raw_ad.subject or ''} {raw_ad.body or ''}".lower()
+            tier_match = version_lower in haystack
+
         loc = raw_ad.location
         comparables.append({
             "id": raw_ad.id,
@@ -95,10 +106,12 @@ def fetch_lbc_comparables(identity, limit=15, exclude_ad_id=None, verbose=False)
             "url": raw_ad.url,
             "city": loc.city_label if loc else None,
             "posted_at": raw_ad.first_publication_date,
+            "tier_match": tier_match,
         })
 
     if verbose:
-        print(f"[lbc:found] {len(comparables)} comparables retenus")
+        matched = sum(1 for c in comparables if c.get("tier_match") is True)
+        print(f"[lbc:found] {len(comparables)} comparables retenus ({matched} tier-match)")
     return comparables
 
 

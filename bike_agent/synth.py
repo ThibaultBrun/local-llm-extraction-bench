@@ -110,10 +110,12 @@ REGLE msrp_eur :
 - Si aucun signal et modele inconnu : null. Sinon commit une valeur plausible.
 
 REGLE PRIORITAIRE : pour estimated_market_eur, le signal le plus fiable est dans cet ordre :
-1. mediane LBC comparables (= ce que ce velo specifique se vend reellement aujourd'hui).
-2. retail_eur web (= prix neuf actuel chez revendeurs, base de calcul decote).
-3. msrp_eur web ou tier estime (= prix d'origine, applique decote selon annee).
-Ne pars JAMAIS d'un msrp prior obsolete si un retail recent existe.
+1. mediane LBC TIER-MATCH (>=3 ads exactement du meme tier H10/H30/S-Works/Comp/etc.) — TRES fiable.
+2. msrp_eur * decote selon annee (cf table decote) — fiable, calculable.
+3. retail_eur web * decote — fiable si retail trouve.
+4. mediane LBC GLOBALE (tier mixe) — utilisable mais NON FIABLE si peu de tier-match : un Rise H10 vaut significativement plus qu'un Rise H30 meme si tous les deux apparaissent dans les comparables. Si tier-match < 3 ads, ne PAS utiliser le median global comme reference.
+
+Cas typique d'erreur : asking 2300 EUR pour H10 (top tier ~7000 MSRP), comparables LBC = majoritairement H30 (entree tier ~5000 MSRP) a 2499. Le median 2499 sous-estime la valeur reelle du H10. La bonne base = 7000 * decote_4ans (~0.5) = ~3500 EUR de marche reel. Donc 2300 = -35% sous marche = bon deal (deal_score 75-85).
 
 PRIORITE pour estimated_market_eur (prix REVENTE occasion):
 1. Si comparables LBC fournis (ads similaires actuelles) : la mediane est le signal le plus fiable.
@@ -193,21 +195,39 @@ def build_synthesis_prompt(annonce, identity, price_summary, asking_price, lbc_c
     web_samples_block = "\n".join(web_samples) or "  (aucun)"
 
     lbc_comparables = lbc_comparables or []
-    lbc_prices = [c["price_eur"] for c in lbc_comparables if c.get("price_eur")]
+    lbc_prices_all = [c["price_eur"] for c in lbc_comparables if c.get("price_eur")]
+    lbc_prices_tier = [c["price_eur"] for c in lbc_comparables if c.get("price_eur") and c.get("tier_match") is True]
+
+    def _med(values):
+        if not values:
+            return None
+        s = sorted(values)
+        n = len(s)
+        return s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2
+
+    lbc_median = _med(lbc_prices_all)
+    lbc_median_tier = _med(lbc_prices_tier)
     lbc_block = "  (aucun comparable LBC)"
-    lbc_median = None
-    if lbc_prices:
-        sorted_prices = sorted(lbc_prices)
-        n = len(sorted_prices)
-        lbc_median = sorted_prices[n // 2] if n % 2 else (sorted_prices[n // 2 - 1] + sorted_prices[n // 2]) / 2
-        lbc_block_lines = [
-            f"  - mediane: {int(lbc_median)} EUR sur {n} ads",
-            f"  - min/max: {int(min(lbc_prices))} / {int(max(lbc_prices))} EUR",
-            "  - echantillons:",
+    if lbc_prices_all:
+        n = len(lbc_prices_all)
+        n_tier = len(lbc_prices_tier)
+        lines = [
+            f"  - mediane GLOBALE: {int(lbc_median)} EUR sur {n} ads similaires (tous tiers confondus)",
         ]
+        if lbc_median_tier is not None:
+            lines.append(f"  - mediane TIER-MATCH (meme version exacte): {int(lbc_median_tier)} EUR sur {n_tier} ads")
+            if n_tier < 3:
+                lines.append("  ATTENTION: peu de comparables exactement du meme tier. Le median global peut etre biaise par d'autres versions du modele (ex H30 vs H10).")
+                lines.append("  -> base-toi PLUTOT sur msrp_eur * decote selon annee.")
+        else:
+            lines.append("  ATTENTION: aucun comparable du meme tier exact. Median global non fiable pour ce variant.")
+            lines.append("  -> base-toi sur msrp_eur * decote selon annee.")
+        lines.append(f"  - min/max global: {int(min(lbc_prices_all))} / {int(max(lbc_prices_all))} EUR")
+        lines.append("  - echantillons (T = tier-match):")
         for c in lbc_comparables[:6]:
-            lbc_block_lines.append(f"    * {c.get('price_eur', '?')} EUR — {(c.get('subject') or '')[:80]}")
-        lbc_block = "\n".join(lbc_block_lines)
+            tag = "T" if c.get("tier_match") is True else "-"
+            lines.append(f"    * [{tag}] {c.get('price_eur', '?')} EUR — {(c.get('subject') or '')[:80]}")
+        lbc_block = "\n".join(lines)
 
     domain_line = f"\nDomaine indique par l'amont : {domain_hint}\n" if domain_hint else ""
 

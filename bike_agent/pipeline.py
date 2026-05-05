@@ -384,12 +384,17 @@ def enrich_ad(
             "cons": [],
         }
 
-    lbc_prices = [c["price_eur"] for c in comparables if c.get("price_eur")]
-    lbc_median = None
-    if lbc_prices:
-        s = sorted(lbc_prices)
+    def _med(values):
+        if not values:
+            return None
+        s = sorted(values)
         n = len(s)
-        lbc_median = s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2
+        return s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2
+
+    lbc_prices_all = [c["price_eur"] for c in comparables if c.get("price_eur")]
+    lbc_prices_tier = [c["price_eur"] for c in comparables if c.get("price_eur") and c.get("tier_match") is True]
+    lbc_median = _med(lbc_prices_all)
+    lbc_median_tier = _med(lbc_prices_tier)
 
     total = time.time() - started
     return {
@@ -411,7 +416,9 @@ def enrich_ad(
             },
             "lbc_comparables": {
                 "count": len(comparables),
+                "tier_match_count": len(lbc_prices_tier),
                 "median_eur": lbc_median,
+                "median_tier_eur": lbc_median_tier,
                 "samples": comparables[:5],
             },
             "durations": {
