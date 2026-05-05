@@ -121,14 +121,18 @@ def bike_description(identity):
 
 
 def search_query_suffix(identity):
+    """Build a query suffix from wheel size — only useful for junior bikes
+    (14-24 pouces) where the wheel size is fundamental to disambiguate from
+    the adult variant. For adult sizes (26/27.5/29) the model name uniquely
+    identifies the bike and the wheel suffix only adds noise (and amplifies
+    extractor errors when LBC attributes are wrong)."""
     size = wheel_size_inches(identity)
     if size is None:
         return ""
-    label = int(size) if size.is_integer() else size
-    base = f' "{label} pouces"'
     if 14 <= size <= 24:
-        base += " junior enfant"
-    return base
+        label = int(size) if size.is_integer() else size
+        return f' "{label} pouces" junior enfant'
+    return ""
 
 
 def get_manufacturer_domain(identity):
