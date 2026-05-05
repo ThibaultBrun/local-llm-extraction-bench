@@ -21,18 +21,22 @@ VELOS JUNIOR (roues 14-24 pouces) : decote moins forte (usage moins agressif)
 - > 8 ans : 15-30%
 
 PENALITES (cumulables):
-- 26" sortie avant ~2015 : -30% (standard obsolete)
-- axe 9mm / non-Boost : -20%
-- cassette 9V/10V : -10%
-- cadre alu raye / impact : -10 a -20%
-- modele VTT < 2018 : ne PAS surestimer la cote
+- 26" adulte sur VTT XC/AM/enduro/DH : -40% au moins (standard obsolete depuis ~2015,
+  signal annee <= 2014, geometrie depassee, plus de pieces neuves dispo).
+  EXCEPTION : VTT DIRT 26" = NORMAL, c'est le standard de la discipline. Pas de penalite.
+  Une bonne affaire en VTT adulte 26" = prix franchement bas (1/3 ou moins du prix
+  d'un equivalent moderne 27.5/29 a etat similaire).
+- axe 9mm / non-Boost : -20% (incompatible standards modernes 110/148mm).
+- cassette 9V/10V : -10% (12V est le standard 2018+).
+- cadre alu raye / impact : -10 a -20%.
+- modele VTT < 2018 : ne PAS surestimer la cote, plafond strict.
 
 CLASSIFICATION vtt_category (PRINCIPALEMENT par mm de debattement avant/arriere):
 - xc            : debattement 80-120mm  (cross-country, leger, perf montee)
 - all_mountain  : 120-150mm  (= ancien "trail", polyvalent)
 - enduro        : 150-170mm  (descente engagee, montee possible)
 - dh            : 180-200mm  (descente pure, double couronne, incl. freeride)
-- dirt          : hardtail rigide jump/pumptrack (pas de suspension arriere)
+- dirt          : hardtail rigide jump/pumptrack (pas de suspension arriere). TOUJOURS 26" — c'est le standard du dirt, ce n'est PAS un signal d'obsolescence.
 - null          : non-VTT (route, gravel, ville, junior, BMX) ou impossible a trancher
 
 Pour determiner vtt_category :
