@@ -76,11 +76,14 @@ def flatten_result(result):
     """
     payload = result.get("payload") or {}
     meta = result.get("meta") or {}
+    durations = meta.get("durations") or {}
     flat = {
         "ad_id": meta.get("ad_id"),
         "ad_url": meta.get("ad_url"),
         "ad_subject": meta.get("ad_subject"),
         "asking_price_eur": meta.get("asking_price_eur"),
+        "duration_s": durations.get("total_s"),
+        "web_search_duration_s": durations.get("web_s"),
     }
     flat.update(payload)
     web_summary = meta.get("web_summary") or {}

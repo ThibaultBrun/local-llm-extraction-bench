@@ -148,6 +148,8 @@ update_enrichment(db, ad["id"], result["payload"], model="ollama-mistral7b+jina+
   "ad_url": "https://www.leboncoin.fr/...",
   "ad_subject": "VTT Enduro Orbea Rallon M10 2023",
   "asking_price_eur": 4500,
+  "duration_s": 175.3,
+  "web_search_duration_s": 138.6,
   "brand": "Orbea",
   "model": "Rallon",
   "year": 2023,
