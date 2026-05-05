@@ -2,24 +2,77 @@
 
 Agent local d'enrichissement d'annonces velo (Leboncoin) — extraction d'identite, recherche web, comparables LBC, et synthese de marche — sans dependance a une API LLM payante.
 
-Concu comme drop-in replacement du Claude-CLI utilise par [lbc-sniper](../lbc-sniper), avec un meilleur signal de prix marche grace aux comparables LBC en temps reel.
+Concu comme drop-in replacement du Claude-CLI utilise par [lbc-sniper](../lbc-sniper), avec un meilleur signal de prix marche grace aux comparables LBC en temps reel et la separation **prix catalogue constructeur** / **prix neuf revendeur** / **prix occasion observe**.
 
-## Pipeline
+## Pipeline de donnees
 
-1. **Extraction** (Ollama `llama3.2:3b`) — marque, modele, annee, taille de roues, taille cadre depuis le texte de l'annonce + attributs LBC.
-2. **Recherche catalogue** (Jina Reader + Ollama) — MSRP via les fiches constructeur (Cloudflare contourne par Jina), prix occasion sur magazines specialises (Velo Vert, Pinkbike, 99 Spokes, etc.).
-3. **Comparables LBC** (lib `lbc`) — annonces similaires actuelles pour calibrer le marche reel (signal le plus fiable).
-4. **Synthese** (Ollama `mistral:7b`) — `condition_score`, `estimated_market_eur`, `deal_score`, `reasoning`, `pros`, `cons`. Schema Claude-compatible.
+```mermaid
+flowchart TB
+    subgraph Input["Entree"]
+        A[Annonce LBC<br/>subject, body, price,<br/>attributes...]
+    end
+
+    subgraph Stage1["1. Identite (llama3.2:3b)"]
+        B[extract_bike<br/>+ post_process]
+        B --> ID[(marque, modele, annee,<br/>taille_roues, taille_cadre)]
+    end
+
+    subgraph Stage2["2. Recherche catalogue web"]
+        C[build_search_queries] --> D[Jina Search API<br/>s.jina.ai]
+        D --> E[rank_sources_with_llm<br/>llama3.2:3b]
+        E --> F[fetch_page_text<br/>via r.jina.ai Reader]
+        F --> G[extract_prices_with_llm<br/>llama3.2:3b<br/>kind: msrp/retail/used/sale]
+    end
+
+    subgraph Stage3["3. Comparables LBC"]
+        H[fetch_lbc_comparables<br/>lib `lbc`<br/>cat=LOISIRS_VELOS]
+        H --> I[(prix occasion<br/>actuel mediane)]
+    end
+
+    subgraph Stage4["4. Synthese (mistral:7b)"]
+        J[synthesize_evaluation<br/>+ regles decote VTT/junior<br/>+ cross-check catalogue]
+    end
+
+    subgraph Output["Sortie - format Claude-compatible"]
+        K[brand, model, year,<br/>vtt_category, wheel_size,<br/>msrp_eur, retail_eur,<br/>retail_source,<br/>estimated_market_eur,<br/>condition_score, deal_score,<br/>reasoning, pros, cons]
+    end
+
+    A --> B
+    A --> C
+    A --> H
+    ID --> C
+    ID --> H
+    G --> J
+    I --> J
+    A --> J
+    J --> K
+
+    style A fill:#e1f5ff
+    style K fill:#d4edda
+    style ID fill:#fff3cd
+    style I fill:#fff3cd
+```
+
+### Trois prix distincts dans la sortie
+
+| Champ | Signification | Source |
+|---|---|---|
+| `msrp_eur` | Prix catalogue **constructeur** au lancement (RRP) | Site officiel marque + connaissance LLM |
+| `retail_eur` | Prix neuf actuel chez gros **revendeurs** en ligne | Alltricks, Bike-Discount, Probikeshop, Starbike, Bike24... |
+| `estimated_market_eur` | Prix **occasion** estime sur LBC | Comparables LBC actuels (signal #1) ou retail × decote (signal #2) |
+| `asking_price_eur` | Prix demande dans l'annonce | Champ `price` de l'annonce LBC |
+
+`retail_source` indique le revendeur d'ou est tire `retail_eur` (ex: `"Starbike"`).
 
 ## Pre-requis
 
 - Python 3.10+
-- [Ollama](https://ollama.com/) avec les modeles :
+- [Ollama](https://ollama.com/) avec :
   ```bash
-  ollama pull llama3.2:3b
-  ollama pull mistral:7b
+  ollama pull llama3.2:3b   # extraction + ranking + price extraction
+  ollama pull mistral:7b    # synthese finale
   ```
-- Cle API Jina (gratuite, signup sur [jina.ai](https://jina.ai/)) — 500 RPM, contourne Cloudflare sur les sites constructeur.
+- Cle API Jina (gratuite, signup sur [jina.ai](https://jina.ai/)) — 500 RPM, contourne Cloudflare sur les sites constructeur et revendeur.
 
 ## Installation
 
@@ -46,11 +99,12 @@ python .\enrich_bike.py --annonce orbea_rise_h10 --fetch-pages --verbose
 ```
 
 Flags utiles :
-- `--fetch-pages` : ouvre les pages trouvees pour extraire les prix via Ollama
+- `--fetch-pages` : ouvre les pages trouvees pour extraire les prix via Ollama (sinon : signaux extraits du titre/snippet seulement)
 - `--verbose` : log toutes les etapes (search, throttle, fetch, rank, synth)
 - `--no-lbc-comparables` : skip la recherche d'annonces similaires sur LBC
 - `--no-cache` : ignore le cache disque HTTP
 - `--raw` : sortie verbeuse `{payload, meta}` au lieu de la forme aplatie
+- `--http-timeout` / `--ollama-timeout` / `--synth-timeout` : ajustements perf
 
 ### API Python (consommation par lbc-sniper)
 
@@ -68,11 +122,12 @@ result = enrich_ad(
         "attributes": {"bicycle_wheel_size": "29\"", ...},
     },
     domain_hint="vtt_enduro",       # depuis classify_vtt() en amont
-    extract_model="llama3.2:3b",    # rapide pour identite + tri
+    extract_model="llama3.2:3b",    # rapide pour identite + tri + extraction prix
     synth_model="mistral:7b",       # plus fort pour l'evaluation
 )
+
 # result["payload"] = drop-in pour update_enrichment de lbc-sniper
-# result["meta"]    = identite, durations, sources web, comparables LBC
+update_enrichment(db, ad["id"], result["payload"], model="ollama-mistral7b+jina+lbc")
 ```
 
 ### Format de sortie (Claude-compatible)
@@ -80,8 +135,8 @@ result = enrich_ad(
 ```json
 {
   "ad_id": 123,
-  "ad_url": "...",
-  "ad_subject": "...",
+  "ad_url": "https://www.leboncoin.fr/...",
+  "ad_subject": "VTT Enduro Orbea Rallon M10 2023",
   "asking_price_eur": 4500,
   "brand": "Orbea",
   "model": "Rallon",
@@ -91,6 +146,9 @@ result = enrich_ad(
   "electric": false,
   "size_label": "M",
   "vtt_category": "enduro",
+  "msrp_eur": 7499,
+  "retail_eur": 6299,
+  "retail_source": "Bike-Discount",
   "condition_score": 85,
   "estimated_market_eur": 4200,
   "deal_score": 60,
@@ -99,8 +157,13 @@ result = enrich_ad(
   "cons": ["..."],
   "_sources": {
     "extracted_identity": {...},
-    "msrp_eur_web": 5999,
+    "msrp_eur_web": 7499,
+    "retail_eur_web": 6450,
     "used_eur_web": 4300,
+    "retail_samples": [
+      {"amount_eur": 6299, "source_name": "Bike-Discount", "source_domain": "bike-discount.de"},
+      {"amount_eur": 6499, "source_name": "Alltricks", "source_domain": "alltricks.fr"}
+    ],
     "lbc_comparables_count": 5,
     "lbc_comparables_median_eur": 4100,
     "lbc_comparables_samples": [...],
@@ -110,13 +173,32 @@ result = enrich_ad(
 }
 ```
 
-Les cles `ad_*` et `asking_price_eur` apportent la tracabilite. Les cles centrales (brand → cons) suivent exactement le schema utilise par [lbc-sniper](../lbc-sniper). `_sources` est purement informatif.
+Les cles `ad_*` apportent la tracabilite. Les cles centrales (`brand` → `cons`) suivent le schema utilise par [lbc-sniper](../lbc-sniper). `_sources` est purement informatif.
+
+## Sources de prix consultees
+
+### Constructeurs (kind=`msrp`, priorite haute)
+
+Catalogue MSRP officiel pour chaque marque connue : Orbea, Trek, Specialized, Cannondale, Canyon, Commencal, Cube, Decathlon, Focus, Giant, Haibike, Kona, KTM, Lapierre, Marin, Mondraker, Norco, Pivot, Propain, Radon, Rocky Mountain, Santa Cruz, Scott, Sunn, Transition, Vitus, Yeti, YT...
+
+### Gros revendeurs en ligne (kind=`retail`, priorite haute)
+
+Prix neuf actuel en boutique : Alltricks, Probikeshop, Bike-Discount, Bike24, Bike-Components, Starbike, Mantel, Bikester, Cyclable, Materiel-Velo, Lecyclo, Wiggle, Chain Reaction Cycles, Tredz, Hibike, Rose Bikes...
+
+### Magazines/comparateurs (kind=`msrp`/`current`, priorite moyenne)
+
+Velo Vert, Big Bike Magazine, 26in, Pinkbike, Bike Magazine, Vital MTB, 99 Spokes, MTB Database, Ekstere.
+
+### Filtres
+
+- URLs Leboncoin filtrees du search web (pas de doublon avec l'annonce source)
+- Comparables LBC fetches separement via la lib `lbc` (recherche `marque modele annee` + filtre taille_roues si dispo)
 
 ## Structure
 
 ```
 .
-├── enrich_bike.py            # agent + CLI principal
+├── enrich_bike.py            # agent + CLI (a splitter — TODO)
 ├── benchmark_extraction.py   # benchmark d'extraction sur multiples modeles
 ├── data/                     # fixtures
 │   ├── annonces.json
@@ -128,15 +210,13 @@ Les cles `ad_*` et `asking_price_eur` apportent la tracabilite. Les cles central
 
 ## Benchmark d'extraction
 
-`benchmark_extraction.py` compare plusieurs modeles Ollama sur les 23 annonces de `data/annonces.json`.
-
 ```powershell
 python .\benchmark_extraction.py                       # tous les modeles
 python .\benchmark_extraction.py --model mistral:7b    # un seul
 python .\benchmark_extraction.py --details             # par-annonce
 ```
 
-### Resultats actuels (extraction marque/modele/annee/taille/taille_roues)
+### Resultats actuels (extraction marque/modele/annee/taille/taille_roues sur 23 annonces)
 
 | Modele | Score | Taux | Temps |
 |---|---:|---:|---:|
@@ -145,22 +225,13 @@ python .\benchmark_extraction.py --details             # par-annonce
 | `llama3.2:3b` | 85/115 | 74% | 41.0s |
 | `qwen2.5:7b` | 81/115 | 70% | 57.7s |
 
-### Scores par champ
-
-```
-marque       : 80/92 (87%)
-modele       : 80/92 (87%)
-annee        : 74/92 (80%)
-taille       : 59/92 (64%)
-taille_roues : 51/92 (55%)
-```
-
 ## Choix techniques
 
-- **Jina Reader** (`r.jina.ai/<url>`) pour les fetches de pages : contourne Cloudflare et anti-bot des sites constructeur, retourne du markdown propre. Avec cle API gratuite : 500 RPM.
-- **Jina Search** (`s.jina.ai/?q=`) en backend search prioritaire si cle presente. Fallback DDG-via-Jina, puis DDG direct, puis Bing.
-- **Cache disque** (`.cache/enrich_bike/`) sur toutes les requetes HTTP : ttl 7 jours, accelere les re-runs.
+- **Jina Reader** (`r.jina.ai/<url>`) pour les fetches de pages : contourne Cloudflare et anti-bot des sites constructeur/revendeur, retourne du markdown propre. Avec cle API : 500 RPM.
+- **Jina Search** (`s.jina.ai/?q=`) prioritaire si cle presente. Fallback DDG-via-Jina, puis DDG direct, puis Bing.
+- **Cache disque** (`.cache/enrich_bike/`) sur toutes les requetes HTTP : ttl 7j.
 - **Throttle par domaine** : DDG 8s, Bing 6s, Jina 0.3s avec cle (3s sans), reste 0.3-0.8s.
 - **Backoff exponentiel** sur 403/429 : 30s, 60s, 120s avec jitter.
-- **URLs LBC filtrees** des resultats search : pas de doublon avec l'annonce source.
-- **Mistral 7b pour la synthese** : raisonnement plus fiable que llama3.2:3b sur les pieges (modeles homonymes adulte/enfant, decote, classification VTT).
+- **safe_url** : encode automatiquement les espaces/quotes des URLs LBC (cas Commencal `clash 24"/...`).
+- **Cross-check LLM** : la synthese mistral:7b corrige l'extracteur llama3.2:3b sur les caracteristiques connues (ex. Orbea Rise H10 = toujours 29", meme si extracteur dit 27.5).
+- **Domaine-aware decote** : VTT enduro/DH/AM/junior, regles distinctes selon `vtt_category` et taille de roues.

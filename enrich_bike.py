@@ -110,16 +110,27 @@ MANUFACTURER_DOMAINS = {
     "ghost": "ghost-bikes.com",
     "giant": "giant-bicycles.com",
     "haibike": "haibike.com",
+    "kona": "konaworld.com",
     "ktm": "ktm-bikes.at",
+    "lapierre": "lapierrebikes.com",
+    "marin": "marinbikes.com",
     "megamo": "megamo.com",
     "mondraker": "mondraker.com",
+    "norco": "norco.com",
     "orbea": "orbea.com",
+    "pivot": "pivotcycles.com",
+    "propain": "propain-bikes.com",
+    "radon": "radon-bikes.de",
     "rockrider": "decathlon.fr",
+    "rocky mountain": "bikes.com",
     "santa cruz": "santacruzbicycles.com",
     "scott": "scott-sports.com",
     "specialized": "specialized.com",
     "sunn": "sunn.fr",
     "trek": "trekbikes.com",
+    "transition": "transitionbikes.com",
+    "vitus": "vitusbikes.com",
+    "yeti": "yeticycles.com",
     "yt": "yt-industries.com",
 }
 PRICE_SOURCE_PROFILES = [
@@ -132,6 +143,25 @@ PRICE_SOURCE_PROFILES = [
     {"name": "99 Spokes", "domain": "99spokes.com", "priority": 80},
     {"name": "MTB Database", "domain": "mtbdatabase.com", "priority": 90},
     {"name": "Ekstere", "domain": "ekstere.eco", "priority": 100},
+]
+KNOWN_RETAILERS = [
+    {"name": "Alltricks", "domain": "alltricks.fr"},
+    {"name": "Probikeshop", "domain": "probikeshop.fr"},
+    {"name": "Bike-Discount", "domain": "bike-discount.de"},
+    {"name": "Bike24", "domain": "bike24.com"},
+    {"name": "Bike-Components", "domain": "bike-components.de"},
+    {"name": "Starbike", "domain": "starbike.com"},
+    {"name": "Mantel", "domain": "mantel.com"},
+    {"name": "Bikester", "domain": "bikester.fr"},
+    {"name": "Cyclable", "domain": "cyclable.com"},
+    {"name": "Materiel-Velo", "domain": "materiel-velo.com"},
+    {"name": "Lecyclo", "domain": "lecyclo.com"},
+    {"name": "Wiggle", "domain": "wiggle.com"},
+    {"name": "Chain Reaction Cycles", "domain": "chainreactioncycles.com"},
+    {"name": "Tredz", "domain": "tredz.co.uk"},
+    {"name": "Cycles UK", "domain": "cyclesuk.com"},
+    {"name": "Hibike", "domain": "hibike.com"},
+    {"name": "Rose Bikes", "domain": "rosebikes.fr"},
 ]
 FUTURE_GEOMETRY_SOURCES = [
     {"name": "Geometry Geeks", "domain": "geometrygeeks.bike", "purpose": "geometry"},
@@ -816,13 +846,17 @@ def source_profile_for_url(url, identity=None):
 
     manufacturer_domain = get_manufacturer_domain(identity or {})
     if manufacturer_domain and domain.endswith(manufacturer_domain):
-        return {"name": "Constructeur", "domain": manufacturer_domain, "priority": 10}
+        return {"name": "Constructeur", "domain": manufacturer_domain, "priority": 10, "type": "manufacturer"}
+
+    for retailer in KNOWN_RETAILERS:
+        if domain.endswith(retailer["domain"]):
+            return {"name": retailer["name"], "domain": retailer["domain"], "priority": 15, "type": "retailer"}
 
     for profile in PRICE_SOURCE_PROFILES:
         if domain.endswith(profile["domain"]):
-            return profile
+            return {**profile, "type": "magazine"}
 
-    return {"name": "Autre", "domain": domain, "priority": 999}
+    return {"name": "Autre", "domain": domain, "priority": 999, "type": "other"}
 
 
 def build_search_queries(identity):
@@ -955,7 +989,7 @@ PRICE_EXTRACTION_SCHEMA = {
                     "amount_eur": {"type": "integer"},
                     "kind": {
                         "type": "string",
-                        "enum": ["msrp", "current", "used", "sale", "unknown"],
+                        "enum": ["msrp", "retail", "current", "used", "sale", "unknown"],
                     },
                     "context": {"type": "string"},
                 },
@@ -967,7 +1001,7 @@ PRICE_EXTRACTION_SCHEMA = {
 }
 
 
-def extract_prices_with_llm(model, identity, page_text, source_url, timeout=25, verbose=False):
+def extract_prices_with_llm(model, identity, page_text, source_url, source_profile=None, timeout=25, verbose=False):
     if not page_text:
         return []
 
@@ -980,11 +1014,34 @@ def extract_prices_with_llm(model, identity, page_text, source_url, timeout=25, 
         if is_junior_bike(identity)
         else ""
     )
+
+    sp = source_profile or {}
+    source_type = sp.get("source_type") or sp.get("type") or "other"
+    source_name = sp.get("source_name") or sp.get("name") or "?"
+    source_hint = ""
+    if source_type == "manufacturer":
+        source_hint = (
+            f"\nSOURCE TYPE: site CONSTRUCTEUR ({source_name}). Les prix sont quasi-toujours "
+            f"des MSRP/prix catalogue. Privilegie kind='msrp' sauf si explicitement promo.\n"
+        )
+    elif source_type == "retailer":
+        source_hint = (
+            f"\nSOURCE TYPE: gros revendeur en ligne ({source_name}, type Alltricks/Bike-Discount). "
+            f"Les prix sont du NEUF en magasin = kind='retail'. Si un prix est barre + un prix "
+            f"actuel, le barre = 'msrp' et l'actuel = 'retail' (ou 'sale' si promo explicite).\n"
+        )
+    elif source_type == "magazine":
+        source_hint = (
+            f"\nSOURCE TYPE: magazine/catalogue specialise ({source_name}). Les prix mentionnes "
+            f"sont generalement des MSRP de reference. kind='msrp' ou 'current' selon contexte.\n"
+        )
+
     excerpt = extract_price_context(page_text)
 
     prompt = (
         f"Velo cible:\n{bike_desc}\n"
-        f"Source: {source_url}\n\n"
+        f"Source: {source_url}"
+        f"{source_hint}\n"
         f"{junior_warning}"
         f"Voici des extraits d'une page web autour de mentions de prix. "
         f"Identifie UNIQUEMENT les prix qui correspondent au velo cible "
@@ -992,8 +1049,13 @@ def extract_prices_with_llm(model, identity, page_text, source_url, timeout=25, 
         f"pas d'autres tailles/modeles, pas les accessoires). "
         f"Pour chaque prix retenu:\n"
         f"- amount_eur: montant entier en euros\n"
-        f"- kind: 'msrp' (prix catalogue/RRP/barre), 'current' (prix de vente neuf actuel), "
-        f"'used' (occasion), 'sale' (promotion explicite), 'unknown' si ambigu\n"
+        f"- kind:\n"
+        f"  * 'msrp' = prix CATALOGUE constructeur (RRP, prix tarif, prix barre sur fiche constructeur)\n"
+        f"  * 'retail' = prix NEUF en boutique chez gros revendeur en ligne (Alltricks, Bike-Discount, Probikeshop)\n"
+        f"  * 'current' = prix neuf actuel autre source (magazine, comparateur)\n"
+        f"  * 'used' = occasion\n"
+        f"  * 'sale' = promotion explicite (-X%, soldes)\n"
+        f"  * 'unknown' = ambigu\n"
         f"- context: courte phrase tiree de l'extrait justifiant le classement\n\n"
         f"Si la page ne concerne pas ce velo specifique, retourne une liste vide.\n\n"
         f"Extraits:\n{excerpt}"
@@ -1112,6 +1174,7 @@ def enrich_identity(
                     "source_name": source_profile["name"],
                     "source_domain": source_profile["domain"],
                     "source_priority": source_profile["priority"],
+                    "source_type": source_profile.get("type", "other"),
                 }
             )
             new_count += 1
@@ -1173,6 +1236,7 @@ def enrich_identity(
                         identity,
                         page["text"],
                         result["url"],
+                        source_profile=result,
                         timeout=ollama_timeout,
                         verbose=verbose,
                     )
@@ -1232,13 +1296,18 @@ PENALITES (cumulables):
 - cadre alu raye / impact : -10 a -20%
 - modele VTT < 2018 : ne PAS surestimer la cote
 
-CLASSIFICATION vtt_category (mm de debattement, valeur enum):
-- xc            : 100-120
-- all_mountain  : 120-150  (= ancien "trail")
-- enduro        : 150-170
-- dh            : 180-200  (incl. freeride)
-- dirt          : hardtail jump/pumptrack
+CLASSIFICATION vtt_category (PRINCIPALEMENT par mm de debattement avant/arriere):
+- xc            : debattement 80-120mm  (cross-country, leger, perf montee)
+- all_mountain  : 120-150mm  (= ancien "trail", polyvalent)
+- enduro        : 150-170mm  (descente engagee, montee possible)
+- dh            : 180-200mm  (descente pure, double couronne, incl. freeride)
+- dirt          : hardtail rigide jump/pumptrack (pas de suspension arriere)
 - null          : non-VTT (route, gravel, ville, junior, BMX) ou impossible a trancher
+
+Pour determiner vtt_category :
+1. Cherche dans l'annonce et les attributs LBC les mots "debattement", "course", "travel", "mm" — signal #1.
+2. Sinon deduis du modele connu (ex. Orbea Rallon = enduro 170mm, Rocky Mountain Element = AM 130mm, Specialized Demo = dh 200mm, Orbea Rise = enduro 150-160mm).
+3. Indices secondaires : double couronne (= dh), monocouronne + bash guard (= enduro/dh), 1 plateau (= AM+).
 
 condition_score (0-100):
 - 0=HS / 30=tres use / 50=usure visible / 80=bon etat / 95+=quasi neuf
@@ -1248,9 +1317,35 @@ deal_score (0-100):
 - Si prix demande inconnu : deal_score = 50 (neutre)
 - REGLE: ne PAS baisser le deal_score pour suspicion d'arnaque (les doutes vont dans cons).
 
-PRIORITE pour estimated_market_eur:
+DEUX prix neufs distincts a remplir:
+
+msrp_eur = prix catalogue CONSTRUCTEUR (RRP/MSRP) au lancement du modele:
+- Le prix tarif officiel publie par la marque (Orbea, Trek, Specialized, etc.).
+- Utilise les MSRP web s'ils sont plausibles, sinon corrige avec ta connaissance catalogue.
+- null si vraiment inconnu.
+
+retail_eur = prix NEUF en boutique chez gros revendeur en ligne (Alltricks, Bike-Discount, Probikeshop, Bike24):
+- C'est le prix REELLEMENT pratique aujourd'hui par les revendeurs (souvent decote vs MSRP : -10 a -30%).
+- Source primaire = signaux 'retail' du resume web. Sinon estime: msrp * 0.85 (decote moyenne revendeur).
+- Si le velo n'est plus distribue chez les revendeurs (modele >2-3 ans), retail_eur peut etre null.
+
+Plages typiques MSRP (ordre de grandeur):
+- VTT enduro carbone haut de gamme : 5000-9000 EUR
+- VTT enduro alu mid-range : 2500-4500 EUR
+- VTT XC carbone : 4000-8000 EUR
+- VAE enduro/AM (Bosch/Shimano EP) : 6000-10000 EUR
+- Velo route carbone perf : 3000-12000 EUR
+- Velo junior premium 24/26" : 600-1500 EUR
+
+CROSS-CHECK l'identite extraite avec ta connaissance catalogue. Exemples:
+- Orbea Rise H10 = TOUJOURS 29 pouces (corrige wheel_size si extracteur dit 27.5).
+- Commencal Clash 24 = 24 pouces junior (jamais adulte).
+- Specialized Stumpjumper EVO = mullet 29/27.5 ou full 29.
+Si tu connais avec certitude une caracteristique du modele, ECRASE l'extracteur.
+
+PRIORITE pour estimated_market_eur (prix REVENTE occasion):
 1. Si comparables LBC fournis (ads similaires actuelles) : la mediane est le signal le plus fiable.
-2. Sinon : MSRP catalogue * decote selon annee + penalites.
+2. Sinon : retail_eur * decote selon annee + penalites (ou msrp_eur * decote si retail inconnu).
 3. Sinon : fourchette prudente avec reasoning explicite sur l'incertitude.
 
 frame_material : "carbon", "aluminium", "acier", "titane" ou null.
@@ -1274,16 +1369,19 @@ SYNTHESIS_SCHEMA = {
             "type": ["string", "null"],
             "enum": ["xc", "all_mountain", "enduro", "dh", "dirt", None],
         },
+        "msrp_eur": {"type": ["number", "null"], "minimum": 0},
+        "retail_eur": {"type": ["number", "null"], "minimum": 0},
+        "retail_source": {"type": ["string", "null"]},
         "condition_score": {"type": "integer", "minimum": 0, "maximum": 100},
         "estimated_market_eur": {"type": "number", "minimum": 0},
         "deal_score": {"type": "integer", "minimum": 0, "maximum": 100},
-        "reasoning": {"type": "string", "maxLength": 500},
+        "reasoning": {"type": "string", "maxLength": 1500},
         "pros": {"type": "array", "items": {"type": "string", "maxLength": 80}, "maxItems": 4},
         "cons": {"type": "array", "items": {"type": "string", "maxLength": 80}, "maxItems": 4},
     },
     "required": [
         "brand", "model", "year", "electric",
-        "condition_score", "estimated_market_eur", "deal_score",
+        "msrp_eur", "retail_eur", "condition_score", "estimated_market_eur", "deal_score",
         "reasoning", "pros", "cons",
     ],
     "additionalProperties": False,
@@ -1310,11 +1408,12 @@ def build_synthesis_prompt(annonce, identity, price_summary, asking_price, lbc_c
 
     estimate = (price_summary or {}).get("estimate") or {}
     msrp = estimate.get("msrp_eur")
+    retail_web = estimate.get("retail_eur")
     used_market_web = estimate.get("used_eur")
 
     by_kind = (price_summary or {}).get("by_kind") or {}
     web_samples = []
-    for kind in ("msrp", "current", "used", "sale"):
+    for kind in ("msrp", "retail", "current", "used", "sale"):
         for p in (by_kind.get(kind) or [])[:3]:
             web_samples.append(f"  - {kind}: {p['amount_eur']} EUR ({p.get('source_name', '?')})")
     web_samples_block = "\n".join(web_samples) or "  (aucun)"
@@ -1350,21 +1449,25 @@ Comparables LBC actuels (ads similaires, le PLUS FIABLE pour le marche occasion)
 {lbc_block}
 
 Resultats catalogue (recherche web) :
-- MSRP estime (mediane msrp+current) : {msrp if msrp else 'inconnu'} EUR
-- Prix occasion web (mediane used+sale) : {used_market_web if used_market_web else 'inconnu'} EUR
+- MSRP constructeur (mediane signaux 'msrp') : {msrp if msrp else 'inconnu'} EUR
+- Prix neuf revendeur (mediane signaux 'retail'+'current') : {retail_web if retail_web else 'inconnu'} EUR
+- Prix occasion web (mediane 'used'+'sale') : {used_market_web if used_market_web else 'inconnu'} EUR
 - Echantillons :
 {web_samples_block}
 
 Tache : remplis TOUS les champs du schema.
-1. brand/model/year : copie/corrige depuis l'identite. Si l'extracteur s'est trompe et que tu vois mieux dans l'annonce, corrige.
-2. frame_material, wheel_size, electric, size_label : extrait depuis l'annonce/identite. null si vraiment inconnu.
+1. brand/model/year : copie/corrige depuis l'identite. Si l'extracteur s'est trompe et que tu vois mieux dans l'annonce ou via ta connaissance catalogue, ECRASE.
+2. frame_material, wheel_size, electric, size_label : extrait depuis l'annonce/identite. CROSS-CHECK avec ta connaissance du modele (ex. Orbea Rise H10 = 29 pouces toujours, donc corrige meme si extracteur dit 27.5). null si vraiment inconnu.
 3. vtt_category : enum (xc/all_mountain/enduro/dh/dirt) seulement si VTT, sinon null.
-4. estimated_market_eur : utilise EN PRIORITE la mediane LBC si dispo. Sinon MSRP * decote.
-5. condition_score (0-100) : depuis le texte ("tres bon etat" ~80, "neuf" 95+, etc.).
-6. deal_score (0-100) : ecart prix_demande vs estimated_market_eur. 50 si prix inconnu.
-7. reasoning : 2-3 phrases (~80 mots max) expliquant le score + situant le modele.
-8. pros : 2-4 bullets concis (max ~10 mots/item).
-9. cons : 2-4 bullets concis (max ~10 mots/item).
+4. msrp_eur : prix CATALOGUE constructeur (RRP). Cf MSRP web + plages typiques + connaissance modele.
+5. retail_eur : prix NEUF en boutique chez gros revendeur (Alltricks/Bike-Discount/Probikeshop/Starbike/etc.). Souvent ~85-90% du MSRP. null si modele plus distribue.
+   retail_source : nom du revendeur source (string, ex: "Starbike", "Alltricks") quand retail_eur est rempli, sinon null.
+6. estimated_market_eur : prix REVENTE occasion. Mediane LBC en priorite, sinon retail_eur * decote selon annee.
+7. condition_score (0-100) : depuis le texte ("tres bon etat" ~80, "neuf" 95+, etc.).
+8. deal_score (0-100) : ecart prix_demande vs estimated_market_eur. 50 si prix inconnu.
+9. reasoning : 2-3 phrases (~200 mots max) expliquant le score + situant le modele.
+10. pros : 2-4 bullets concis (max ~10 mots/item).
+11. cons : 2-4 bullets concis (max ~10 mots/item).
 
 Sois rigoureux. Si l'identite est lacunaire, dis-le dans reasoning et donne une fourchette prudente.
 """
@@ -1412,11 +1515,15 @@ def synthesize_evaluation(
     data = json.loads(response["message"]["content"])
     duration = time.time() - started
     if verbose:
+        retail = data.get('retail_eur')
+        retail_src = data.get('retail_source')
+        retail_str = f"{retail}EUR ({retail_src})" if retail and retail_src else (f"{retail}EUR" if retail else "?")
         print(
             f"[synth] brand={data.get('brand')} model={data.get('model')} "
-            f"vtt_cat={data.get('vtt_category')} cond={data.get('condition_score')} "
-            f"market={data.get('estimated_market_eur')}EUR deal={data.get('deal_score')} "
-            f"({duration:.2f}s)"
+            f"vtt_cat={data.get('vtt_category')} wheel={data.get('wheel_size')} "
+            f"msrp={data.get('msrp_eur')}EUR retail={retail_str} "
+            f"cond={data.get('condition_score')} market={data.get('estimated_market_eur')}EUR "
+            f"deal={data.get('deal_score')} ({duration:.2f}s)"
         )
     return data, duration
 
@@ -1664,6 +1771,9 @@ def enrich_ad(
             "electric": None,
             "size_label": identity.get("taille"),
             "vtt_category": None,
+            "msrp_eur": (web.get("price_summary") or {}).get("estimate", {}).get("msrp_eur"),
+            "retail_eur": (web.get("price_summary") or {}).get("estimate", {}).get("retail_eur"),
+            "retail_source": None,
             "condition_score": 50,
             "estimated_market_eur": 0,
             "deal_score": 50,
@@ -1690,7 +1800,16 @@ def enrich_ad(
             "identity": identity,
             "web_summary": {
                 "msrp_eur": (web.get("price_summary") or {}).get("estimate", {}).get("msrp_eur"),
+                "retail_eur_web": (web.get("price_summary") or {}).get("estimate", {}).get("retail_eur"),
                 "used_eur_web": (web.get("price_summary") or {}).get("estimate", {}).get("used_eur"),
+                "retail_samples": [
+                    {
+                        "amount_eur": p["amount_eur"],
+                        "source_name": p.get("source_name"),
+                        "source_domain": p.get("source_domain"),
+                    }
+                    for p in (web.get("price_summary") or {}).get("by_kind", {}).get("retail", [])[:5]
+                ],
                 "candidates_count": web.get("candidates_count"),
                 "selected_count": len(web.get("selected_results") or []),
             },
@@ -1747,8 +1866,8 @@ def summarize_prices(results):
     if not prices:
         return {
             "count": 0,
-            "by_kind": {"msrp": [], "current": [], "used": [], "sale": [], "unknown": []},
-            "estimate": {"msrp_eur": None, "used_eur": None},
+            "by_kind": {"msrp": [], "retail": [], "current": [], "used": [], "sale": [], "unknown": []},
+            "estimate": {"msrp_eur": None, "retail_eur": None, "used_eur": None},
         }
 
     unique = []
@@ -1760,18 +1879,20 @@ def summarize_prices(results):
         seen.add(key)
         unique.append(price)
 
-    by_kind = {"msrp": [], "current": [], "used": [], "sale": [], "unknown": []}
+    by_kind = {"msrp": [], "retail": [], "current": [], "used": [], "sale": [], "unknown": []}
     for price in unique:
         kind = price["kind"] if price["kind"] in by_kind else "unknown"
         by_kind[kind].append(price)
 
-    msrp_pool = [p["amount_eur"] for p in by_kind["msrp"] + by_kind["current"]]
+    msrp_pool = [p["amount_eur"] for p in by_kind["msrp"]]
+    retail_pool = [p["amount_eur"] for p in by_kind["retail"] + by_kind["current"]]
     used_pool = [p["amount_eur"] for p in by_kind["used"] + by_kind["sale"]]
 
     return {
         "count": len(unique),
         "by_kind": {
             "msrp": by_kind["msrp"][:10],
+            "retail": by_kind["retail"][:10],
             "current": by_kind["current"][:10],
             "used": by_kind["used"][:10],
             "sale": by_kind["sale"][:5],
@@ -1779,6 +1900,7 @@ def summarize_prices(results):
         },
         "estimate": {
             "msrp_eur": _median(msrp_pool),
+            "retail_eur": _median(retail_pool),
             "used_eur": _median(used_pool),
         },
     }
@@ -1857,12 +1979,15 @@ def flatten_result(result):
         "asking_price_eur": meta.get("asking_price_eur"),
     }
     flat.update(payload)
+    web_summary = meta.get("web_summary") or {}
     flat["_sources"] = {
         "extracted_identity": meta.get("identity"),
-        "msrp_eur_web": (meta.get("web_summary") or {}).get("msrp_eur"),
-        "used_eur_web": (meta.get("web_summary") or {}).get("used_eur_web"),
-        "web_candidates_count": (meta.get("web_summary") or {}).get("candidates_count"),
-        "web_selected_count": (meta.get("web_summary") or {}).get("selected_count"),
+        "msrp_eur_web": web_summary.get("msrp_eur"),
+        "retail_eur_web": web_summary.get("retail_eur_web"),
+        "used_eur_web": web_summary.get("used_eur_web"),
+        "retail_samples": web_summary.get("retail_samples"),
+        "web_candidates_count": web_summary.get("candidates_count"),
+        "web_selected_count": web_summary.get("selected_count"),
         "lbc_comparables_count": (meta.get("lbc_comparables") or {}).get("count"),
         "lbc_comparables_median_eur": (meta.get("lbc_comparables") or {}).get("median_eur"),
         "lbc_comparables_samples": (meta.get("lbc_comparables") or {}).get("samples"),
