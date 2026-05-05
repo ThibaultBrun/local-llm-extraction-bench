@@ -68,11 +68,18 @@ def extract_bike(model, annonce, timeout, verbose=False):
     return identity, time.time() - start
 
 
-def compact_identity(identity):
+def compact_identity(identity, include_version=True):
+    """Build a search-friendly label.
+
+    Default order: marque + tier(version) + modele + annee, natural for
+    product names (e.g. "SPECIALIZED S-Works Stumpjumper EVO 2024").
+    Pass include_version=False for the no-tier fallback query.
+    """
+    version = identity.get("version") if include_version else None
     parts = [
         identity.get("marque"),
+        version,
         identity.get("modele"),
-        identity.get("version"),
         str(identity.get("annee")) if identity.get("annee") else None,
     ]
     return " ".join(part for part in parts if part)

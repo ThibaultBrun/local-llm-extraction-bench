@@ -14,28 +14,43 @@ from bike_agent.identity import (
 
 
 def build_search_queries(identity):
-    base = compact_identity(identity)
-    if not base:
-        return []
+    """Return (primary, fallback) query lists.
+
+    Primary queries use the full label including version/tier (e.g. "S-Works").
+    Fallback queries drop the tier — ran only if primary returns too few results.
+    When no tier is detected, fallback is empty (primary already covers the model).
+    """
+    base_with_tier = compact_identity(identity, include_version=True)
+    if not base_with_tier:
+        return [], []
+
+    base_no_tier = compact_identity(identity, include_version=False)
+    has_tier = bool(identity.get("version")) and base_with_tier != base_no_tier
 
     suffix = search_query_suffix(identity)
-    queries = [
-        {"source": "Revendeurs", "domain": None, "query": f"{base}{suffix} prix neuf alltricks bike-discount probikeshop"},
-        {"source": "Web general", "domain": None, "query": f"{base}{suffix} prix fiche technique"},
-        {"source": "Web general", "domain": None, "query": f"{base}{suffix} test review velo"},
-    ]
-
     manufacturer_domain = get_manufacturer_domain(identity)
-    if manufacturer_domain:
-        queries.insert(
-            0,
-            {
-                "source": "Constructeur",
+
+    def _queries_for(base, label_suffix=""):
+        out = []
+        if manufacturer_domain:
+            out.append({
+                "source": f"Constructeur{label_suffix}",
                 "domain": manufacturer_domain,
                 "query": f"{base}{suffix} site:{manufacturer_domain}",
-            },
-        )
-    return queries
+            })
+        out.extend([
+            {"source": f"Revendeurs{label_suffix}", "domain": None,
+             "query": f"{base}{suffix} prix neuf alltricks bike-discount probikeshop"},
+            {"source": f"Web general{label_suffix}", "domain": None,
+             "query": f"{base}{suffix} prix fiche technique"},
+            {"source": f"Web general{label_suffix}", "domain": None,
+             "query": f"{base}{suffix} test review velo"},
+        ])
+        return out
+
+    primary = _queries_for(base_with_tier)
+    fallback = _queries_for(base_no_tier, label_suffix=" (no tier)") if has_tier else []
+    return primary, fallback
 
 
 RANK_SCHEMA = {

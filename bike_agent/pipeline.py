@@ -124,12 +124,14 @@ def enrich_identity(
     top_sources=8,
     verbose=False,
 ):
-    query_specs = build_search_queries(identity)
+    primary_queries, fallback_queries = build_search_queries(identity)
+    query_specs = list(primary_queries)
     search_runs = []
     candidates = []
     seen_urls = set()
+    FALLBACK_THRESHOLD = 5
 
-    for query_spec in query_specs:
+    def _run_query(query_spec):
         query = query_spec["query"]
         if verbose:
             source = query_spec.get("source") or "source inconnue"
@@ -147,7 +149,7 @@ def enrich_identity(
             search_runs.append(
                 {**query_spec, "search_engine": None, "error": str(exc), "results_count": 0}
             )
-            continue
+            return
 
         if verbose:
             print(f"[search] engine={search_engine}, results={len(results)}")
@@ -184,6 +186,16 @@ def enrich_identity(
                 "results_count": new_count,
             }
         )
+
+    for query_spec in primary_queries:
+        _run_query(query_spec)
+
+    if fallback_queries and len(candidates) < FALLBACK_THRESHOLD:
+        if verbose:
+            print(f"[search:fallback] only {len(candidates)} candidates after primary, running no-tier fallback")
+        for query_spec in fallback_queries:
+            _run_query(query_spec)
+            query_specs.append(query_spec)
 
     rank_method = "llm"
     try:
