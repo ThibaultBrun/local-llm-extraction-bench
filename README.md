@@ -109,7 +109,7 @@ Flags utiles :
 ### API Python (consommation par lbc-sniper)
 
 ```python
-from enrich_bike import enrich_ad
+from bike_agent import enrich_ad   # ou from enrich_bike import enrich_ad (legacy)
 
 result = enrich_ad(
     ad={
@@ -198,14 +198,62 @@ Velo Vert, Big Bike Magazine, 26in, Pinkbike, Bike Magazine, Vital MTB, 99 Spoke
 
 ```
 .
-├── enrich_bike.py            # agent + CLI (a splitter — TODO)
+├── enrich_bike.py            # wrapper retrocompat (50 lignes) — re-exports + __main__
 ├── benchmark_extraction.py   # benchmark d'extraction sur multiples modeles
+├── bike_agent/               # package principal de l'agent
+│   ├── __init__.py           # API publique (enrich_ad, fetch_lbc_*, ...)
+│   ├── config.py             # constantes (USER_AGENTS, RETAILERS, MANUFACTURER_DOMAINS,
+│   │                         #             throttle table, cache state, env loader)
+│   ├── http_client.py        # http_get, headers (Jina auth), throttle, cache, safe_url
+│   ├── search.py             # DDG/Bing/Jina backends + parsers + web_search
+│   ├── identity.py           # extract_bike (Ollama), bike_description, junior detection,
+│   │                         #   source_profile_for_url (manufacturer/retailer/magazine)
+│   ├── pages.py              # fetch_page_text (Jina-first), extract_prices_with_llm
+│   ├── ranking.py            # build_search_queries, rank_sources_with_llm
+│   ├── synth.py              # SYNTHESIS_SCHEMA, DECOTE_RULES_BIKE, synthesize_evaluation
+│   ├── lbc.py                # render_lbc_ad, fetch_lbc_comparables, fetch_lbc_ad
+│   ├── pipeline.py           # enrich_identity, summarize_prices, enrich_ad (orchestrateur)
+│   └── cli.py                # argparse, main, _output, flatten_result
 ├── data/                     # fixtures
 │   ├── annonces.json
 │   ├── catalogue.json
 │   └── expected.json
 ├── samples/                  # sorties d'exemples (gitignored)
 └── .cache/                   # cache HTTP disque (gitignored)
+```
+
+### Dependances entre modules
+
+```
+config         (constantes pures, aucune dep)
+  ↑
+http_client    (config)
+  ↑
+search         (config + http_client)
+  ↑
+identity       (config + http_client + benchmark_extraction)
+  ↑
+pages          (config + http_client + identity)
+  ↑                              ↑
+ranking (identity)            synth (pages)        lbc (config)
+  ↑                              ↑                   ↑
+  └─── pipeline (search + identity + pages + ranking + synth + lbc)
+                       ↑
+                       cli (config + pipeline + lbc)
+                       ↑
+                       __init__ (re-exports)
+                       ↑
+                       enrich_bike.py (legacy wrapper)
+```
+
+### Imports
+
+```python
+# Recommande (nouvelle API)
+from bike_agent import enrich_ad, fetch_lbc_comparables
+
+# Legacy (fonctionne toujours)
+from enrich_bike import enrich_ad
 ```
 
 ## Benchmark d'extraction
