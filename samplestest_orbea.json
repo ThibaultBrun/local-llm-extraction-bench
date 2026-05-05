@@ -1,0 +1,86 @@
+[
+  {
+    "ad_id": 3173596973,
+    "ad_url": "https://www.leboncoin.fr/ad/velos/3173596973",
+    "ad_subject": "VTT commencal 24 pouces",
+    "asking_price_eur": 1950.0,
+    "brand": "Commencal",
+    "model": "Clash",
+    "year": null,
+    "electric": false,
+    "msrp_eur": 2541,
+    "retail_eur": 2041,
+    "condition_score": 80,
+    "estimated_market_eur": 1637.95,
+    "deal_score": 18,
+    "reasoning": "L'annonce présente un VTT Commencal Clash 24 pouces en très bon état avec une fourche Manitou et un débattement de 145 mm. Le prix demandé est de 1950 €, ce qui représente un écart de 312.05 € par rapport à notre estimation du marché occasionnel. Nous avons utilisé la médiane des prix neufs en boutique chez gros revendeurs comme base pour notre estimation et appliqué une dévaluation de 25 % pour les VTT junior, car ce modèle est destiné aux jeunes riders. Le prix neuf du Commencal Clash 24 pouces chez un grand revendeur en ligne est de 2041 €.",
+    "pros": [
+      "Marque réputée",
+      "Débattement adapté aux jeunes riders"
+    ],
+    "cons": [
+      "Prix demandé supérieur à notre estimation du marché occasionnel"
+    ],
+    "frame_material": null,
+    "wheel_size": "24",
+    "size_label": "XS",
+    "vtt_category": "dirt",
+    "retail_source": null,
+    "_sources": {
+      "extracted_identity": {
+        "marque": "Commencal",
+        "modele": "Clash",
+        "annee": null,
+        "taille": "XS",
+        "taille_roues": "24"
+      },
+      "msrp_eur_web": 2541,
+      "retail_eur_web": 2041,
+      "used_eur_web": 2083,
+      "retail_samples": [
+        {
+          "amount_eur": 599,
+          "source_name": "Constructeur",
+          "source_domain": "commencal.com"
+        },
+        {
+          "amount_eur": 1916,
+          "source_name": "Constructeur",
+          "source_domain": "commencal.com"
+        },
+        {
+          "amount_eur": 2166,
+          "source_name": "Constructeur",
+          "source_domain": "commencal.com"
+        },
+        {
+          "amount_eur": 499,
+          "source_name": "Autre",
+          "source_domain": "buycycle.com"
+        },
+        {
+          "amount_eur": 2722,
+          "source_name": "Autre",
+          "source_domain": "rotoruabike.fr"
+        }
+      ],
+      "web_candidates_count": 14,
+      "web_selected_count": 8,
+      "lbc_comparables_count": 0,
+      "lbc_comparables_median_eur": null,
+      "lbc_comparables_samples": [],
+      "durations_s": {
+        "extraction_s": 3.88,
+        "web_s": 113.53,
+        "lbc_s": 0.35,
+        "synth_s": 13.66,
+        "total_s": 131.42
+      },
+      "models": {
+        "extract": "llama3.2:3b",
+        "synth": "mistral:7b"
+      },
+      "synth_error": null
+    }
+  }
+]

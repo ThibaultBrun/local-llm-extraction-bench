@@ -160,9 +160,27 @@ update_enrichment(db, ad["id"], result["payload"], model="ollama-mistral7b+jina+
     "msrp_eur_web": 7499,
     "retail_eur_web": 6450,
     "used_eur_web": 4300,
+    "msrp_samples": [
+      {
+        "amount_eur": 7499, "kind": "msrp",
+        "source_name": "Constructeur", "source_domain": "orbea.com",
+        "url": "https://www.orbea.com/fr-fr/bikes/mountain/rallon",
+        "context": "Prix tarif catalogue 2023"
+      }
+    ],
     "retail_samples": [
-      {"amount_eur": 6299, "source_name": "Bike-Discount", "source_domain": "bike-discount.de"},
-      {"amount_eur": 6499, "source_name": "Alltricks", "source_domain": "alltricks.fr"}
+      {
+        "amount_eur": 6299, "kind": "retail",
+        "source_name": "Bike-Discount", "source_domain": "bike-discount.de",
+        "url": "https://www.bike-discount.de/fr/orbea-rallon-m10",
+        "context": "Prix actuel en stock chez Bike-Discount"
+      },
+      {
+        "amount_eur": 6499, "kind": "retail",
+        "source_name": "Alltricks", "source_domain": "alltricks.fr",
+        "url": "https://www.alltricks.fr/F-95845-vtt/P-2095822-orbea-rallon-m10",
+        "context": "Prix neuf catalogue Alltricks"
+      }
     ],
     "lbc_comparables_count": 5,
     "lbc_comparables_median_eur": 4100,

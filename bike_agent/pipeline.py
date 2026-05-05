@@ -22,6 +22,23 @@ from bike_agent.search import web_search
 from bike_agent.synth import extract_asking_price, synthesize_evaluation
 
 
+def _price_samples(price_summary, kind, limit=5):
+    """Extract a flat list of {amount_eur, kind, source_name, source_domain, url, context}
+    from price_summary['by_kind'][kind] for inclusion in the meta output."""
+    by_kind = (price_summary or {}).get("by_kind") or {}
+    samples = []
+    for p in (by_kind.get(kind) or [])[:limit]:
+        samples.append({
+            "amount_eur": p["amount_eur"],
+            "kind": p.get("kind", kind),
+            "source_name": p.get("source_name"),
+            "source_domain": p.get("source_domain"),
+            "url": p.get("source"),
+            "context": (p.get("context") or "")[:200],
+        })
+    return samples
+
+
 def _median(values):
     cleaned = sorted(int(v) for v in values if isinstance(v, (int, float)) and v >= 500)
     if not cleaned:
@@ -375,14 +392,8 @@ def enrich_ad(
                 "msrp_eur": (web.get("price_summary") or {}).get("estimate", {}).get("msrp_eur"),
                 "retail_eur_web": (web.get("price_summary") or {}).get("estimate", {}).get("retail_eur"),
                 "used_eur_web": (web.get("price_summary") or {}).get("estimate", {}).get("used_eur"),
-                "retail_samples": [
-                    {
-                        "amount_eur": p["amount_eur"],
-                        "source_name": p.get("source_name"),
-                        "source_domain": p.get("source_domain"),
-                    }
-                    for p in (web.get("price_summary") or {}).get("by_kind", {}).get("retail", [])[:5]
-                ],
+                "msrp_samples": _price_samples(web.get("price_summary"), "msrp"),
+                "retail_samples": _price_samples(web.get("price_summary"), "retail"),
                 "candidates_count": web.get("candidates_count"),
                 "selected_count": len(web.get("selected_results") or []),
             },

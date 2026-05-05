@@ -89,6 +89,7 @@ def flatten_result(result):
         "msrp_eur_web": web_summary.get("msrp_eur"),
         "retail_eur_web": web_summary.get("retail_eur_web"),
         "used_eur_web": web_summary.get("used_eur_web"),
+        "msrp_samples": web_summary.get("msrp_samples"),
         "retail_samples": web_summary.get("retail_samples"),
         "web_candidates_count": web_summary.get("candidates_count"),
         "web_selected_count": web_summary.get("selected_count"),
