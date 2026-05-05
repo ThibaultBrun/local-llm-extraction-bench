@@ -20,6 +20,7 @@ def build_search_queries(identity):
 
     suffix = search_query_suffix(identity)
     queries = [
+        {"source": "Revendeurs", "domain": None, "query": f"{base}{suffix} prix neuf alltricks bike-discount probikeshop"},
         {"source": "Web general", "domain": None, "query": f"{base}{suffix} prix fiche technique"},
         {"source": "Web general", "domain": None, "query": f"{base}{suffix} test review velo"},
     ]

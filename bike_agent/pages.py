@@ -145,19 +145,22 @@ def extract_prices_with_llm(model, identity, page_text, source_url, source_profi
     source_hint = ""
     if source_type == "manufacturer":
         source_hint = (
-            f"\nSOURCE TYPE: site CONSTRUCTEUR ({source_name}). Les prix sont quasi-toujours "
-            f"des MSRP/prix catalogue. Privilegie kind='msrp' sauf si explicitement promo.\n"
+            f"\nSOURCE TYPE: site CONSTRUCTEUR ({source_name}). "
+            f"REGLE STRICTE: kind ne peut etre QUE 'msrp' (prix tarif catalogue) ou 'sale' "
+            f"(promotion explicite type -X% / soldes). Ne JAMAIS utiliser 'retail' pour une "
+            f"page constructeur — un fabricant n'est pas un revendeur, meme s'il vend en direct.\n"
         )
     elif source_type == "retailer":
         source_hint = (
             f"\nSOURCE TYPE: gros revendeur en ligne ({source_name}, type Alltricks/Bike-Discount). "
-            f"Les prix sont du NEUF en magasin = kind='retail'. Si un prix est barre + un prix "
-            f"actuel, le barre = 'msrp' et l'actuel = 'retail' (ou 'sale' si promo explicite).\n"
+            f"REGLE STRICTE: le prix de vente actuel = 'retail'. Si un prix est barre = 'msrp', "
+            f"l'actuel = 'retail' (ou 'sale' si promo explicite -X%).\n"
         )
     elif source_type == "magazine":
         source_hint = (
-            f"\nSOURCE TYPE: magazine/catalogue specialise ({source_name}). Les prix mentionnes "
-            f"sont generalement des MSRP de reference. kind='msrp' ou 'current' selon contexte.\n"
+            f"\nSOURCE TYPE: magazine/comparateur ({source_name}). "
+            f"Le prix mentionne est generalement le MSRP de reference (kind='msrp'). "
+            f"Ne pas utiliser 'retail' pour un magazine.\n"
         )
 
     excerpt = extract_price_context(page_text)

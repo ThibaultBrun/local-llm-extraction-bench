@@ -51,15 +51,20 @@ deal_score (0-100):
 
 DEUX prix neufs distincts a remplir:
 
+PRINCIPE GENERAL : ta connaissance des prix est OBSOLETE (date de l'entrainement, ne suit pas les baisses 2024-2025).
+Les SIGNAUX WEB (samples 'msrp' et 'retail') sont la VERITE TERRAIN. Si un revendeur (Alltricks/Bike-Discount/etc.)
+vend a 3900 EUR un velo que tu pensais a 13000 EUR, le marche actuel = 3900, point. Trust the web.
+
 msrp_eur = prix catalogue CONSTRUCTEUR (RRP/MSRP) au lancement du modele:
-- Le prix tarif officiel publie par la marque (Orbea, Trek, Specialized, etc.).
-- Utilise les MSRP web s'ils sont plausibles, sinon corrige avec ta connaissance catalogue.
+- Si signaux 'msrp' web (constructeur ou magazine) presents et coherents : utilise leur mediane/max.
+- Sinon seulement, fallback connaissance catalogue (avec prudence : tes prix peuvent etre obsoletes).
 - null si vraiment inconnu.
 
-retail_eur = prix NEUF en boutique chez gros revendeur en ligne (Alltricks, Bike-Discount, Probikeshop, Bike24):
-- C'est le prix REELLEMENT pratique aujourd'hui par les revendeurs (souvent decote vs MSRP : -10 a -30%).
-- Source primaire = signaux 'retail' du resume web. Sinon estime: msrp * 0.85 (decote moyenne revendeur).
-- Si le velo n'est plus distribue chez les revendeurs (modele >2-3 ans), retail_eur peut etre null.
+retail_eur = prix NEUF en boutique chez gros revendeur en ligne (Alltricks, Bike-Discount, Probikeshop, Bike24, Starbike):
+- PRIORITE ABSOLUE aux signaux 'retail' du web s'ils existent (un prix Alltricks 2025 ECRASE ta prior 2023).
+- Si pas de signal retail mais un msrp web : retail_eur ≈ msrp * 0.85.
+- Si vraiment aucun signal et tu connais bien le modele : estimation prudente.
+- retail_source : nom du revendeur du signal retail le plus pertinent (le moins cher representatif), ou null.
 
 Plages typiques MSRP (ordre de grandeur):
 - VTT enduro carbone haut de gamme : 5000-9000 EUR
@@ -69,16 +74,15 @@ Plages typiques MSRP (ordre de grandeur):
 - Velo route carbone perf : 3000-12000 EUR
 - Velo junior premium 24/26" : 600-1500 EUR
 
-VARIANT TIERS (CRUCIAL pour msrp_eur — un meme modele a plusieurs versions):
-- "S-Works" (Specialized)       : TOP de gamme, 11000-15000 EUR.
-- "Pro" / "Pro AXS"             : haut de gamme, 7000-11000 EUR.
-- "Expert"                      : haut milieu, 5000-7500 EUR.
-- "Comp"                        : milieu, 3500-5500 EUR.
-- "Alloy" / "Alu"               : entree, 2500-4000 EUR.
-- "Frameset"                    : CADRE SEUL, ne pas confondre avec velo complet.
-- "M-Team", "M-LTD" (Orbea)     : top series, 9000-14000 EUR.
-- "X01" / "XX1" / "AXS"         : transmission haut de gamme.
-- Generation "S-Works" / "Master" / "M10" / "Team" => MSRP minimum 8000 EUR meme si web dit 2000.
+VARIANT TIERS (utile UNIQUEMENT en l'absence de signal web — sinon le web prime):
+- "S-Works" (Specialized) : top de gamme historiquement 11000-15000 EUR au lancement.
+- "Pro" / "Pro AXS"       : haut de gamme historiquement 7000-11000 EUR.
+- "Expert"                : haut milieu historiquement 5000-7500 EUR.
+- "Comp"                  : milieu historiquement 3500-5500 EUR.
+- "Alloy" / "Alu"         : entree historiquement 2500-4000 EUR.
+- "Frameset"              : CADRE SEUL — ne pas confondre avec velo complet.
+- "M-Team", "M-LTD" (Orbea) : top series historiquement 9000-14000 EUR.
+ATTENTION : ces fourchettes datent. Si retail_eur web pour le MEME variant est plus bas, le web gagne.
 
 INDICES REVENDEUR / EX-LOCATION / RECONDITIONNE (a flagger en CONS sans baisser deal_score):
 - "MINT-Bikes", "Buycycle", "Rebike", "Upway", "MyVeloShop" : revendeurs pro de reconditionne, souvent ex-location.
@@ -93,7 +97,16 @@ CROSS-CHECK l'identite extraite avec ta connaissance catalogue. Exemples:
 - Specialized S-Works = TOUJOURS carbone full, jamais alu (corrige frame_material).
 Si tu connais avec certitude une caracteristique du modele, ECRASE l'extracteur.
 
-REGLE msrp_eur : ne renvoie null que si tu n'as VRAIMENT aucune idee du modele. Si tu connais la marque + modele + tier (ex S-Works) tu DOIS donner une fourchette plausible meme sans signal web fiable. Les MSRP web peuvent referencer d'autres variants — fie-toi d'abord au TIER reel du velo cible.
+REGLE msrp_eur :
+- Si signal MSRP web pour le BON variant : utilise-le directement (web > prior).
+- Si signaux MSRP web concernent d'autres variants seulement : fallback sur tier du velo cible.
+- Si aucun signal et modele inconnu : null. Sinon commit une valeur plausible.
+
+REGLE PRIORITAIRE : pour estimated_market_eur, le signal le plus fiable est dans cet ordre :
+1. mediane LBC comparables (= ce que ce velo specifique se vend reellement aujourd'hui).
+2. retail_eur web (= prix neuf actuel chez revendeurs, base de calcul decote).
+3. msrp_eur web ou tier estime (= prix d'origine, applique decote selon annee).
+Ne pars JAMAIS d'un msrp prior obsolete si un retail recent existe.
 
 PRIORITE pour estimated_market_eur (prix REVENTE occasion):
 1. Si comparables LBC fournis (ads similaires actuelles) : la mediane est le signal le plus fiable.
