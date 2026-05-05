@@ -62,6 +62,16 @@ def fetch_lbc_comparables(identity, limit=15, exclude_ad_id=None, verbose=False)
 
     comparables = []
     wheel_target = identity.get("taille_roues")
+    # Wheel filter is only enforced for junior bikes (14-24 inches), where the
+    # difference matters fundamentally. For adult bikes (26+) the seller's LBC
+    # attribute is often wrong/missing and filtering on it kills real comparables.
+    enforce_wheel = False
+    try:
+        wt = float(str(wheel_target).replace(",", ".")) if wheel_target else None
+        enforce_wheel = wt is not None and 14 <= wt <= 24
+    except ValueError:
+        enforce_wheel = False
+
     for raw_ad in (result.ads or []):
         if exclude_ad_id is not None and raw_ad.id == exclude_ad_id:
             continue
@@ -73,7 +83,7 @@ def fetch_lbc_comparables(identity, limit=15, exclude_ad_id=None, verbose=False)
         for a in (raw_ad.attributes or []):
             if a.key and a.value_label:
                 attrs[a.key] = a.value_label
-        if wheel_target:
+        if enforce_wheel:
             ad_wheel = attrs.get("bicycle_wheel_size", "")
             if ad_wheel and wheel_target not in str(ad_wheel):
                 continue

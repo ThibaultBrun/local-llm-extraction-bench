@@ -1,5 +1,6 @@
 """Web search backends: DuckDuckGo (lite + via Jina), Bing, Jina native search."""
 
+import base64
 import re
 from html import unescape
 from html.parser import HTMLParser
@@ -8,6 +9,32 @@ from urllib.parse import parse_qs, quote_plus, unquote, urlparse
 
 from bike_agent import config
 from bike_agent.http_client import http_get, normalize_space
+
+
+def unwrap_redirect_url(url):
+    """Resolve common search-redirect URLs to their actual destination.
+
+    Bing returns results via `https://www.bing.com/ck/a?...&u=a1<base64>&...`
+    where the `u` parameter (after stripping the `a1` prefix) is the base64-
+    encoded destination URL. Until we unwrap, all such results look like
+    `bing.com` to the source classifier (and price extraction reads the
+    wrong page entirely).
+    """
+    if not url:
+        return url
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return url
+    if parsed.netloc.endswith("bing.com") and "/ck/a" in parsed.path:
+        target = parse_qs(parsed.query).get("u", [None])[0]
+        if target and target.startswith("a1"):
+            try:
+                padding = "=" * (-len(target[2:]) % 4)
+                return base64.urlsafe_b64decode(target[2:] + padding).decode("utf-8")
+            except (ValueError, UnicodeDecodeError):
+                return url
+    return url
 
 
 def clean_duckduckgo_url(url):
@@ -138,6 +165,8 @@ def unique_results(results, max_results):
     unique = []
     seen = set()
     for result in results:
+        # Resolve Bing/redirect wrappers so source classification sees the real domain
+        result = {**result, "url": unwrap_redirect_url(result["url"])}
         if result["url"] in seen:
             continue
         seen.add(result["url"])

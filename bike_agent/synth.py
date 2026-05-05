@@ -90,12 +90,15 @@ INDICES REVENDEUR / EX-LOCATION / RECONDITIONNE (a flagger en CONS sans baisser 
 - "disponible a la location" dans titre annonce particulier = velo ex-location intensive (usure forte cachee).
 - Localisation publication != lieu reel du velo (ex: pub Bordeaux mais stock Aix) = revendeur multi-sites.
 
-CROSS-CHECK l'identite extraite avec ta connaissance catalogue. Exemples:
-- Orbea Rise H10 = TOUJOURS 29 pouces (corrige wheel_size si extracteur dit 27.5).
-- Commencal Clash 24 = 24 pouces junior (jamais adulte).
+CROSS-CHECK l'identite extraite avec ta connaissance catalogue. L'extracteur copie betement les attributs LBC qui peuvent etre faux (vendeur qui se trompe). Exemples a CORRIGER:
+- Orbea Rise H10 / Rise H20 / Rise H30 = VAE enduro/AM, 29" ou mullet 29/27.5, JAMAIS 26". MSRP 6000-8000 EUR. Detecte motorisation Shimano EP801 / Bosch / etc.
+- Orbea Rallon = enduro 29", 170mm debattement, MSRP 4000-9000 selon tier (M-LTD top).
+- Commencal Clash 24 = 24 pouces junior, jamais adulte.
 - Specialized Stumpjumper EVO = mullet 29/27.5 ou full 29.
-- Specialized S-Works = TOUJOURS carbone full, jamais alu (corrige frame_material).
-Si tu connais avec certitude une caracteristique du modele, ECRASE l'extracteur.
+- Specialized S-Works = carbone full, jamais alu. MSRP historique 11000-15000 mais voir signal web.
+- Trek Slash / Fuel EX = enduro/trail 29 pouces.
+- Indices VAE : "EP801", "EP8", "Bosch CX", "Brose", "Yamaha PWX", "540 Wh", "630 Wh", "Di2 M8150" => electric=true, MSRP minimum 5000-7000 EUR pour le VAE moderne.
+Si tu connais avec certitude une caracteristique du modele, ECRASE l'extracteur — meme si extracteur dit 26 pouces, mets 29 pour un Rise H10.
 
 REGLE msrp_eur :
 - Si signal MSRP web pour le BON variant : utilise-le directement (web > prior).
@@ -146,7 +149,9 @@ SYNTHESIS_SCHEMA = {
     },
     "required": [
         "brand", "model", "year", "electric",
-        "msrp_eur", "retail_eur", "condition_score", "estimated_market_eur", "deal_score",
+        "frame_material", "wheel_size", "size_label", "vtt_category",
+        "msrp_eur", "retail_eur", "retail_source",
+        "condition_score", "estimated_market_eur", "deal_score",
         "reasoning", "pros", "cons",
     ],
     "additionalProperties": False,
