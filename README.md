@@ -98,6 +98,16 @@ python .\enrich_bike.py --ad-json my-ad.json --domain vtt_enduro --fetch-pages
 python .\enrich_bike.py --annonce orbea_rise_h10 --fetch-pages --verbose
 ```
 
+#### Exemples concrets de test
+
+```powershell
+# VAE enduro adulte 29" — exerce le pipeline complet (Jina + comparables LBC + synth)
+python enrich_bike.py --lbc-search "orbea rise h30" --lbc-limit 1 --fetch-pages --domain vtt_enduro --verbose --output samples/test_orbea.json
+
+# Velo junior 24" — verifie le cross-check wheel_size et la decote junior specifique
+python enrich_bike.py --lbc-search "commencal clash 24" --lbc-limit 1 --fetch-pages --domain vtt_enduro --verbose --output samples/clash_24.json
+```
+
 Flags utiles :
 - `--fetch-pages` : ouvre les pages trouvees pour extraire les prix via Ollama (sinon : signaux extraits du titre/snippet seulement)
 - `--verbose` : log toutes les etapes (search, throttle, fetch, rank, synth)
