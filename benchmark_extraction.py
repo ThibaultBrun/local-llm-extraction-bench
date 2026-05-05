@@ -19,7 +19,7 @@ INTERESTING_MODEL_ORDER = [
     "phi4-mini:latest",
     "qwen2.5:3b",
 ]
-CATALOGUE = json.loads(Path("catalogue.json").read_text(encoding="utf-8"))
+CATALOGUE = json.loads(Path("data/catalogue.json").read_text(encoding="utf-8"))
 
 
 def normalize_text(value):
@@ -428,8 +428,8 @@ def parse_args():
     parser.add_argument("--model", action="append", help="Modele Ollama a tester. Peut etre repete.")
     parser.add_argument("--limit", type=int, help="Nombre maximum d'annonces a tester.")
     parser.add_argument("--timeout", type=float, default=30, help="Timeout par appel Ollama en secondes.")
-    parser.add_argument("--annonces", default="annonces.json", help="Fichier JSON des annonces.")
-    parser.add_argument("--expected", default="expected.json", help="Fichier JSON des resultats attendus.")
+    parser.add_argument("--annonces", default="data/annonces.json", help="Fichier JSON des annonces.")
+    parser.add_argument("--expected", default="data/expected.json", help="Fichier JSON des resultats attendus.")
     return parser.parse_args()
 
 
@@ -494,6 +494,10 @@ def main():
         for model in models_to_test:
             model_results = [result for result in results if result["model"] == model]
             print_field_scores(model_results, model)
+
+    # Save results to JSON
+    with open("result.json", "w", encoding="utf-8") as f:
+        json.dump(results, f, ensure_ascii=False, indent=2)
 
 
 if __name__ == "__main__":
