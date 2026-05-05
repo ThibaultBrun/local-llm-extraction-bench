@@ -267,9 +267,13 @@ Tache : remplis TOUS les champs du schema.
     NE PAS lister : la ville, la date de publication, ou la categorie generique "VAE" / "VTT".
 11. cons : 2-4 bullets concis (max ~10 mots/item). Points negatifs SUBSTANTIELS uniquement :
     usure visible, prix au-dessus marche, kilometrage eleve, signaux ex-location/refurb,
-    risque arnaque (prix trop bas), pieces obsoletes, manque de details.
-    NE JAMAIS lister la ville (ex: "Ville : Bordeaux"), la date de publication, ou les
-    informations purement administratives — ce sont des elements de contexte, PAS des cons.
+    pieces obsoletes (axe 9mm, cassette 9V, 26" hors dirt), manque d'info dans l'annonce.
+    INTERDIT :
+    - Speculer sur un "risque arnaque" / "prix trop bas" : tu n'as AUCUN moyen de detecter
+      une arnaque (pas d'historique vendeur, pas de verif). Un prix bas = bonne affaire,
+      point. Si la fourchette est plausible, ne mentionne PAS de risque arnaque.
+    - Lister la ville, la date de publication, ou les metadonnees admin (Bordeaux,
+      "publie il y a 6 jours", etc.) — ce sont des elements de contexte, PAS des cons.
 
 Sois rigoureux. Si l'identite est lacunaire, dis-le dans reasoning et donne une fourchette prudente.
 
