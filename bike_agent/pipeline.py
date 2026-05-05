@@ -477,25 +477,17 @@ def enrich_ad(
 
     config.CACHE_ENABLED = saved_cache
 
-    # Override deal_score with a deterministic computation. Small models like
-    # mistral:7b are unreliable on percentage math, so we always do this in code.
-    # Strategy: compute score_vs_new (asking vs msrp/retail * decote) and
-    # score_vs_used (asking vs LBC tier-match median) independently, then
-    # weight 65% new + 35% used. Fall back to whichever exists if only one.
-    deal_breakdown = None
-    if evaluation is not None and asking_price:
-        deal_breakdown = compute_deal_scores(
-            asking=asking_price,
-            msrp_eur=evaluation.get("msrp_eur"),
-            retail_eur=evaluation.get("retail_eur"),
-            year=evaluation.get("year"),
-            lbc_median_tier=lbc_median_tier,
-            lbc_median_global=lbc_median,
-        )
-        if deal_breakdown.get("deal_score") is not None:
-            evaluation["deal_score"] = deal_breakdown["deal_score"]
-            evaluation["deal_score_vs_new"] = deal_breakdown["deal_score_vs_new"]
-            evaluation["deal_score_vs_used"] = deal_breakdown["deal_score_vs_used"]
+    def _med(values):
+        if not values:
+            return None
+        s = sorted(values)
+        n = len(s)
+        return s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2
+
+    lbc_prices_all = [c["price_eur"] for c in comparables if c.get("price_eur")]
+    lbc_prices_tier = [c["price_eur"] for c in comparables if c.get("price_eur") and c.get("tier_match") is True]
+    lbc_median = _med(lbc_prices_all)
+    lbc_median_tier = _med(lbc_prices_tier)
 
     if evaluation is None:
         wheel_size = identity.get("taille_roues")
@@ -519,17 +511,25 @@ def enrich_ad(
             "cons": [],
         }
 
-    def _med(values):
-        if not values:
-            return None
-        s = sorted(values)
-        n = len(s)
-        return s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2
-
-    lbc_prices_all = [c["price_eur"] for c in comparables if c.get("price_eur")]
-    lbc_prices_tier = [c["price_eur"] for c in comparables if c.get("price_eur") and c.get("tier_match") is True]
-    lbc_median = _med(lbc_prices_all)
-    lbc_median_tier = _med(lbc_prices_tier)
+    # Override deal_score with a deterministic computation. Small models like
+    # mistral:7b are unreliable on percentage math, so we always do this in code.
+    # Strategy: compute score_vs_new (asking vs msrp/retail * decote) and
+    # score_vs_used (asking vs LBC tier-match median) independently, then
+    # weight 65% new + 35% used. Fall back to whichever exists if only one.
+    deal_breakdown = None
+    if asking_price:
+        deal_breakdown = compute_deal_scores(
+            asking=asking_price,
+            msrp_eur=evaluation.get("msrp_eur"),
+            retail_eur=evaluation.get("retail_eur"),
+            year=evaluation.get("year"),
+            lbc_median_tier=lbc_median_tier,
+            lbc_median_global=lbc_median,
+        )
+        if deal_breakdown.get("deal_score") is not None:
+            evaluation["deal_score"] = deal_breakdown["deal_score"]
+            evaluation["deal_score_vs_new"] = deal_breakdown["deal_score_vs_new"]
+            evaluation["deal_score_vs_used"] = deal_breakdown["deal_score_vs_used"]
 
     total = time.time() - started
     return {
