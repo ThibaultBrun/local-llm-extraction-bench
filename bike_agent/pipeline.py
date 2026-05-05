@@ -546,6 +546,17 @@ def enrich_ad(
             evaluation["deal_score"] = deal_breakdown["deal_score"]
             evaluation["deal_score_vs_new"] = deal_breakdown["deal_score_vs_new"]
             evaluation["deal_score_vs_used"] = deal_breakdown["deal_score_vs_used"]
+            if verbose:
+                vs_new = deal_breakdown["deal_score_vs_new"]
+                vs_used = deal_breakdown["deal_score_vs_used"]
+                mfn = deal_breakdown["market_from_new_eur"]
+                mfu = deal_breakdown["market_from_used_eur"]
+                print(
+                    f"[deal] asking={asking_price}EUR | market_from_new={mfn}EUR (vs_new={vs_new}) "
+                    f"| market_from_used={mfu}EUR (vs_used={vs_used}) "
+                    f"| FINAL deal_score={deal_breakdown['deal_score']} "
+                    f"(basis={deal_breakdown.get('used_basis', '?')})"
+                )
 
     total = time.time() - started
     return {

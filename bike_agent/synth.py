@@ -329,11 +329,13 @@ def synthesize_evaluation(
         retail = data.get('retail_eur')
         retail_src = data.get('retail_source')
         retail_str = f"{retail}EUR ({retail_src})" if retail and retail_src else (f"{retail}EUR" if retail else "?")
+        # Note: deal_score from the synth is later overridden by pipeline.compute_deal_scores
+        # (deterministic, math-based). We don't print it here to avoid confusion.
         print(
             f"[synth] brand={data.get('brand')} model={data.get('model')} "
             f"vtt_cat={data.get('vtt_category')} wheel={data.get('wheel_size')} "
             f"msrp={data.get('msrp_eur')}EUR retail={retail_str} "
             f"cond={data.get('condition_score')} market={data.get('estimated_market_eur')}EUR "
-            f"deal={data.get('deal_score')} ({duration:.2f}s)"
+            f"({duration:.2f}s — synth deal_score sera ecrase par compute_deal_scores)"
         )
     return data, duration
