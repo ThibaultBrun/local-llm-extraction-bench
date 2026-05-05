@@ -293,7 +293,9 @@ def synthesize_evaluation(
                     "Tu es un expert du marche francais d'occasion (velos, VTT, ebikes, junior, route, gravel, BMX). "
                     "Tu evalues une annonce a partir du texte, de l'identite extraite, "
                     "des prix catalogue trouves sur le web, et des annonces LBC similaires. "
-                    "Tu reponds UNIQUEMENT en JSON strict respectant le schema fourni.\n"
+                    "Tu reponds UNIQUEMENT en JSON strict respectant le schema fourni. "
+                    "TOUS les champs textuels (reasoning, pros, cons, retail_source) sont OBLIGATOIREMENT en FRANCAIS, "
+                    "meme quand l'annonce contient des termes techniques anglais (Shimano, Fox, etc.).\n"
                     + DECOTE_RULES_BIKE
                 ),
             },
