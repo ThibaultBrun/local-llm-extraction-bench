@@ -149,6 +149,8 @@ SYNTHESIS_SCHEMA = {
         "condition_score": {"type": "integer", "minimum": 0, "maximum": 100},
         "estimated_market_eur": {"type": "number", "minimum": 0},
         "deal_score": {"type": "integer", "minimum": 0, "maximum": 100},
+        "deal_score_vs_new": {"type": ["integer", "null"], "minimum": 0, "maximum": 100},
+        "deal_score_vs_used": {"type": ["integer", "null"], "minimum": 0, "maximum": 100},
         "reasoning": {"type": "string", "maxLength": 1500},
         "pros": {"type": "array", "items": {"type": "string", "maxLength": 80}, "maxItems": 4},
         "cons": {"type": "array", "items": {"type": "string", "maxLength": 80}, "maxItems": 4},
@@ -211,19 +213,19 @@ def build_synthesis_prompt(annonce, identity, price_summary, asking_price, lbc_c
     if lbc_prices_all:
         n = len(lbc_prices_all)
         n_tier = len(lbc_prices_tier)
-        lines = [
-            f"  - mediane GLOBALE: {int(lbc_median)} EUR sur {n} ads similaires (tous tiers confondus)",
-        ]
-        if lbc_median_tier is not None:
+        lines = []
+        if n_tier >= 3:
             lines.append(f"  - mediane TIER-MATCH (meme version exacte): {int(lbc_median_tier)} EUR sur {n_tier} ads")
-            if n_tier < 3:
-                lines.append("  ATTENTION: peu de comparables exactement du meme tier. Le median global peut etre biaise par d'autres versions du modele (ex H30 vs H10).")
-                lines.append("  -> base-toi PLUTOT sur msrp_eur * decote selon annee.")
+            lines.append("  -> SIGNAL FIABLE pour estimated_market_eur.")
         else:
-            lines.append("  ATTENTION: aucun comparable du meme tier exact. Median global non fiable pour ce variant.")
-            lines.append("  -> base-toi sur msrp_eur * decote selon annee.")
-        lines.append(f"  - min/max global: {int(min(lbc_prices_all))} / {int(max(lbc_prices_all))} EUR")
-        lines.append("  - echantillons (T = tier-match):")
+            # Hide the misleading global median entirely when there's no tier-match.
+            # Showing it caused the synth to anchor on the wrong tier (ex: H30 ads
+            # for a H10 target).
+            lines.append(f"  - {n} ads similaires trouvees ({n_tier} exactement du meme tier)")
+            lines.append("  ATTENTION: pas assez de comparables EXACTEMENT du meme tier (besoin >=3).")
+            lines.append("  -> IGNORE les prix LBC ci-dessous, ils concernent d'autres tiers du meme modele.")
+            lines.append("  -> Calcule estimated_market_eur a partir de msrp_eur * decote selon annee, c'est OBLIGATOIRE ici.")
+        lines.append("  - echantillons bruts (T = tier-match exact, - = autre tier):")
         for c in lbc_comparables[:6]:
             tag = "T" if c.get("tier_match") is True else "-"
             lines.append(f"    * [{tag}] {c.get('price_eur', '?')} EUR — {(c.get('subject') or '')[:80]}")

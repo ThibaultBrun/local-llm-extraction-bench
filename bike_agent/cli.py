@@ -90,6 +90,7 @@ def flatten_result(result):
     web_summary = meta.get("web_summary") or {}
     flat["_sources"] = {
         "extracted_identity": meta.get("identity"),
+        "deal_breakdown": meta.get("deal_breakdown"),
         "msrp_eur_web": web_summary.get("msrp_eur"),
         "retail_eur_web": web_summary.get("retail_eur_web"),
         "used_eur_web": web_summary.get("used_eur_web"),

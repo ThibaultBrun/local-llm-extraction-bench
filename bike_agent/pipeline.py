@@ -22,6 +22,121 @@ from bike_agent.search import web_search
 from bike_agent.synth import extract_asking_price, synthesize_evaluation
 
 
+CURRENT_YEAR = 2026
+
+
+def decote_factor(year):
+    """Approximate fraction of new-price retained on the used market for a bike
+    of given year. Mid-point of the DECOTE_RULES_BIKE ranges."""
+    if not year:
+        return 0.5  # default mid-life when age unknown
+    age = CURRENT_YEAR - int(year)
+    if age < 0:
+        age = 0
+    if age < 4:
+        return 0.60   # 50-70%
+    if age < 7:
+        return 0.32   # 25-40%
+    if age < 12:
+        return 0.17   # 12-22%
+    return 0.10       # 5-15%
+
+
+def compute_market_from_new(msrp_eur, retail_eur, year):
+    """Reference 'used market' price computed from the new price + age decote.
+    Prefers retail (actual current new price at retailers) over MSRP.
+    Returns None if no new-price signal."""
+    new_price = retail_eur or msrp_eur
+    if not new_price or new_price <= 0:
+        return None
+    return new_price * decote_factor(year)
+
+
+def _ratio_to_score(ratio):
+    """Map asking/market ratio to a 0-100 deal score.
+    Scale matches DECOTE_RULES_BIKE prompt:
+      >= 1.5  -> 0   (very expensive)
+      >= 1.25 -> 15
+      >= 1.10 -> 30  (a bit expensive)
+      >= 0.95 -> 50  (at market)
+      >= 0.85 -> 65  (mild deal, -5 to -15%)
+      >= 0.70 -> 80  (good deal, -15 to -30%)
+      >= 0.55 -> 90  (great deal, -30 to -45%)
+      <  0.55 -> 95  (exceptional, -45%+)
+    """
+    if ratio >= 1.5:
+        return 0
+    if ratio >= 1.25:
+        return 15
+    if ratio >= 1.10:
+        return 30
+    if ratio >= 0.95:
+        return 50
+    if ratio >= 0.85:
+        return 65
+    if ratio >= 0.70:
+        return 80
+    if ratio >= 0.55:
+        return 90
+    return 95
+
+
+def compute_deal_score(asking, market):
+    if asking is None or not market or market <= 0:
+        return None
+    return _ratio_to_score(asking / market)
+
+
+def compute_deal_scores(asking, msrp_eur, retail_eur, year, lbc_median_tier, lbc_median_global):
+    """Produce three deal scores plus the weighted final score:
+
+    - score_vs_new : asking vs (retail or msrp) * decote(age). Objective signal
+      based on catalogue + age, immune to LBC noise.
+    - score_vs_used : asking vs LBC tier-match median (preferred) or global
+      median (fallback). Reflects what the actual market is doing today.
+    - deal_score   : weighted 65% vs_new + 35% vs_used when both available,
+      otherwise whichever is available.
+
+    Mistral 7b is unreliable at percentage math, so we always override the
+    synth's deal_score with this deterministic computation.
+    """
+    market_from_new = compute_market_from_new(msrp_eur, retail_eur, year)
+    score_vs_new = compute_deal_score(asking, market_from_new)
+
+    # Strict policy on the used reference:
+    # - tier-match median if available (best signal: same exact variant)
+    # - else, only fall back to global median when there's NO new-price reference
+    #   (otherwise the global median is too noisy: H30 ads dragging an H10 score)
+    if lbc_median_tier:
+        market_from_used = lbc_median_tier
+        used_basis = "tier_match"
+    elif market_from_new is None:
+        market_from_used = lbc_median_global
+        used_basis = "global_fallback"
+    else:
+        market_from_used = None
+        used_basis = "skipped"
+    score_vs_used = compute_deal_score(asking, market_from_used)
+
+    if score_vs_new is not None and score_vs_used is not None:
+        final = round(0.65 * score_vs_new + 0.35 * score_vs_used)
+    elif score_vs_new is not None:
+        final = score_vs_new
+    elif score_vs_used is not None:
+        final = score_vs_used
+    else:
+        final = None
+
+    return {
+        "deal_score": final,
+        "deal_score_vs_new": score_vs_new,
+        "deal_score_vs_used": score_vs_used,
+        "market_from_new_eur": round(market_from_new) if market_from_new else None,
+        "market_from_used_eur": round(market_from_used) if market_from_used else None,
+        "used_basis": used_basis,
+    }
+
+
 def _price_samples(price_summary, kind, limit=5):
     """Extract a flat list of {amount_eur, kind, source_name, source_domain, url, context}
     from price_summary['by_kind'][kind] for inclusion in the meta output."""
@@ -362,6 +477,26 @@ def enrich_ad(
 
     config.CACHE_ENABLED = saved_cache
 
+    # Override deal_score with a deterministic computation. Small models like
+    # mistral:7b are unreliable on percentage math, so we always do this in code.
+    # Strategy: compute score_vs_new (asking vs msrp/retail * decote) and
+    # score_vs_used (asking vs LBC tier-match median) independently, then
+    # weight 65% new + 35% used. Fall back to whichever exists if only one.
+    deal_breakdown = None
+    if evaluation is not None and asking_price:
+        deal_breakdown = compute_deal_scores(
+            asking=asking_price,
+            msrp_eur=evaluation.get("msrp_eur"),
+            retail_eur=evaluation.get("retail_eur"),
+            year=evaluation.get("year"),
+            lbc_median_tier=lbc_median_tier,
+            lbc_median_global=lbc_median,
+        )
+        if deal_breakdown.get("deal_score") is not None:
+            evaluation["deal_score"] = deal_breakdown["deal_score"]
+            evaluation["deal_score_vs_new"] = deal_breakdown["deal_score_vs_new"]
+            evaluation["deal_score_vs_used"] = deal_breakdown["deal_score_vs_used"]
+
     if evaluation is None:
         wheel_size = identity.get("taille_roues")
         evaluation = {
@@ -421,6 +556,7 @@ def enrich_ad(
                 "median_tier_eur": lbc_median_tier,
                 "samples": comparables[:5],
             },
+            "deal_breakdown": deal_breakdown,
             "durations": {
                 "extraction_s": round(ext_dur, 2),
                 "web_s": round(web_dur, 2),
