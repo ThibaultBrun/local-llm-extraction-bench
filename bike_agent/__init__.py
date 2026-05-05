@@ -19,7 +19,7 @@ from bike_agent.identity import (
     get_manufacturer_domain,
     source_profile_for_url,
 )
-from bike_agent.lbc import fetch_lbc_ad, fetch_lbc_comparables, render_lbc_ad
+from bike_agent.lbc import fetch_lbc_ad, fetch_lbc_ad_by_id, fetch_lbc_comparables, render_lbc_ad
 from bike_agent.synth import synthesize_evaluation, extract_asking_price
 from bike_agent.pipeline import enrich_ad, enrich_identity, summarize_prices
 from bike_agent.cli import flatten_result, main
@@ -29,6 +29,7 @@ __all__ = [
     "enrich_identity",
     "summarize_prices",
     "fetch_lbc_ad",
+    "fetch_lbc_ad_by_id",
     "fetch_lbc_comparables",
     "render_lbc_ad",
     "synthesize_evaluation",

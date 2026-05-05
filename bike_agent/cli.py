@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from bike_agent import config
-from bike_agent.lbc import fetch_lbc_ad
+from bike_agent.lbc import fetch_lbc_ad, fetch_lbc_ad_by_id
 from bike_agent.pipeline import enrich_ad
 
 
@@ -16,6 +16,7 @@ def parse_args():
     src.add_argument("--annonce", help="Cle de l'annonce dans le fichier JSON local (mode test legacy).")
     src.add_argument("--ad-json", help="Chemin d'un JSON d'annonce LBC-style (id, subject, body, price, url, city, attributes).")
     src.add_argument("--lbc-search", help="Query Leboncoin pour fetch des annonces et les enrichir.")
+    src.add_argument("--lbc-id", help="ID d'une annonce Leboncoin (extrait directement par id, sans search).")
     parser.add_argument("--annonces", default="data/annonces.json", help="Fichier JSON des annonces (mode --annonce).")
     parser.add_argument("--lbc-limit", type=int, default=3, help="Nombre d'annonces a fetcher en mode --lbc-search.")
     parser.add_argument("--no-lbc-comparables", action="store_true", help="Desactive la recherche d'annonces LBC similaires pour le marche.")
@@ -137,6 +138,16 @@ def main():
 
     if args.ad_json:
         ad = json.loads(Path(args.ad_json).read_text(encoding="utf-8"))
+        result = _enrich_ad_with_args(ad, args)
+        _output(result, args.output, raw=args.raw)
+        return
+
+    if args.lbc_id:
+        ad = fetch_lbc_ad_by_id(args.lbc_id, verbose=args.verbose)
+        if not ad:
+            print(f"[lbc] Annonce id={args.lbc_id} introuvable.", file=sys.stderr)
+            sys.exit(1)
+        print(f"\n=== {ad.get('subject', '')[:80]} ===", file=sys.stderr)
         result = _enrich_ad_with_args(ad, args)
         _output(result, args.output, raw=args.raw)
         return
