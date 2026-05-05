@@ -511,6 +511,22 @@ def enrich_ad(
             "cons": [],
         }
 
+    # Sync synth-level corrections back into the identity dict. The schema-based
+    # extractor often gets wheel_size or year wrong (faithful to misfilled LBC
+    # attributes); the synth fixes them via catalogue knowledge. We propagate
+    # the corrections so meta.identity reflects the canonical values, not the
+    # raw extractor output.
+    field_mapping = {
+        "wheel_size": "taille_roues",
+        "year": "annee",
+        "size_label": "taille",
+        "electric": "electric",
+    }
+    for synth_key, identity_key in field_mapping.items():
+        synth_value = evaluation.get(synth_key)
+        if synth_value is not None and synth_value != "":
+            identity[identity_key] = synth_value
+
     # Override deal_score with a deterministic computation. Small models like
     # mistral:7b are unreliable on percentage math, so we always do this in code.
     # Strategy: compute score_vs_new (asking vs msrp/retail * decote) and
