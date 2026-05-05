@@ -77,6 +77,12 @@ def fetch_lbc_comparables(identity, limit=15, exclude_ad_id=None, verbose=False)
     # can weight tier-matched ads higher.
     version_lower = (identity.get("version") or "").lower().strip()
 
+    # Electric filter: a VAE costs roughly 2x a comparable musculaire, so we drop
+    # comparables that don't match the target's electric status when known.
+    target_electric = identity.get("electric")
+
+    from bike_agent.identity import detect_electric  # avoid top-level circular import
+
     for raw_ad in (result.ads or []):
         if exclude_ad_id is not None and raw_ad.id == exclude_ad_id:
             continue
@@ -93,10 +99,15 @@ def fetch_lbc_comparables(identity, limit=15, exclude_ad_id=None, verbose=False)
             if ad_wheel and wheel_target not in str(ad_wheel):
                 continue
 
+        ad_text = f"{raw_ad.subject or ''} {raw_ad.body or ''}"
+        ad_electric = detect_electric(ad_text, attrs)
+        if target_electric is not None and ad_electric is not None and ad_electric != target_electric:
+            # Drop comparables that don't match the electric/musculaire status.
+            continue
+
         tier_match = None
         if version_lower:
-            haystack = f"{raw_ad.subject or ''} {raw_ad.body or ''}".lower()
-            tier_match = version_lower in haystack
+            tier_match = version_lower in ad_text.lower()
 
         loc = raw_ad.location
         comparables.append({
@@ -107,11 +118,13 @@ def fetch_lbc_comparables(identity, limit=15, exclude_ad_id=None, verbose=False)
             "city": loc.city_label if loc else None,
             "posted_at": raw_ad.first_publication_date,
             "tier_match": tier_match,
+            "ad_electric": ad_electric,
         })
 
     if verbose:
         matched = sum(1 for c in comparables if c.get("tier_match") is True)
-        print(f"[lbc:found] {len(comparables)} comparables retenus ({matched} tier-match)")
+        elec_str = "electric" if target_electric is True else ("musculaire" if target_electric is False else "any")
+        print(f"[lbc:found] {len(comparables)} comparables retenus ({matched} tier-match, target={elec_str})")
     return comparables
 
 

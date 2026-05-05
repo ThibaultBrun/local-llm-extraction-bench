@@ -22,6 +22,69 @@ VARIANT_TIERS = (
 )
 
 
+ELECTRIC_KEYWORDS = (
+    # Designations explicites
+    "vae", "vttae", "vtteae", "v.a.e.", "vtt electrique", "velo electrique",
+    "vtt e-bike", "ebike", "e-bike", "e-mtb", "emtb", "electric bike",
+    "vtt assistance electrique", "assistance electrique", "moteur electrique",
+    # Moteurs courants
+    "bosch cx", "bosch sx", "performance line", "active line",
+    "shimano ep8", "shimano ep801", "ep801", " ep8 ", "shimano steps",
+    "brose s mag", "brose drive",
+    "yamaha pwx", "yamaha pw",
+    "specialized sl", "fazua", "tq hpr50", "polini", "panasonic",
+    # Modeles 100% VAE notoires (filet de securite)
+    "orbea rise", "orbea wild", "orbea kemen",
+    "specialized levo", "specialized kenevo", "specialized vado", "specialized turbo",
+    "trek rail", "trek powerfly", "trek fuel exe",
+    "scott patron", "scott genius eride", "scott strike eride",
+    "cube stereo hybrid", "cube reaction hybrid",
+    "haibike sduro", "haibike xduro", "haibike alltrack",
+    "moustache samedi", "moustache lundi", "moustache j",
+    "decathlon stilus", "rockrider e-",
+    "canyon spectral on", "canyon strive on",
+    "lapierre overvolt",
+    # Batterie
+    " wh", "watts heure", "watts-heure", "battery", "batterie",
+    "540 wh", "625 wh", "630 wh", "720 wh", "750 wh", "800 wh",
+)
+
+
+NON_ELECTRIC_HINTS = (
+    " musculaire", "vtt musculaire", "non electrique", "sans assistance",
+)
+
+
+def detect_electric(text, attributes=None):
+    """Detect if the bike is electric (VAE/ebike). Returns True / False / None.
+
+    Strategy:
+    1. LBC structured attribute `bicycle_electric` if present (most reliable).
+    2. Explicit "musculaire" / "non electrique" keywords -> False.
+    3. VAE keywords (VAE, motor name, battery Wh, known ebike model) -> True.
+    4. None if no signal.
+    """
+    attrs = attributes or {}
+    raw_attr = str(attrs.get("bicycle_electric") or attrs.get("electric") or "").lower().strip()
+    if raw_attr in {"true", "yes", "oui", "1"}:
+        return True
+    if raw_attr in {"false", "no", "non", "0"}:
+        return False
+
+    if not text:
+        return None
+    lower = " " + text.lower() + " "
+
+    for hint in NON_ELECTRIC_HINTS:
+        if hint in lower:
+            return False
+
+    for kw in ELECTRIC_KEYWORDS:
+        if kw in lower:
+            return True
+    return None
+
+
 def detect_variant_tier(text):
     """Scan annonce text for known variant/tier keywords (e.g. S-Works, Pro,
     Expert) that the schema-based extractor often drops. Returns the matched
@@ -59,9 +122,14 @@ def extract_bike(model, annonce, timeout, verbose=False):
     annonce_text = annonce if isinstance(annonce, str) else (
         f"{annonce.get('subject', '')} {annonce.get('body', '')}"
     )
+    annonce_attrs = annonce.get("attributes") if isinstance(annonce, dict) else None
     tier = detect_variant_tier(annonce_text)
     if tier and not identity.get("version"):
         identity["version"] = tier
+
+    electric = detect_electric(annonce_text, annonce_attrs)
+    if electric is not None:
+        identity["electric"] = electric
 
     if verbose:
         print(f"[extract] identity={json.dumps(identity, ensure_ascii=False)}")
