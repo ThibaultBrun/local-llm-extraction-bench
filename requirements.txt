@@ -1,1 +1,2 @@
-ollama
+ollama>=0.3.0
+lbc>=1.1.2
