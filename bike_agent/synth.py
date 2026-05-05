@@ -46,7 +46,8 @@ condition_score (0-100):
 deal_score (0-100):
 - 0=tres cher / 30=un peu cher / 50=au marche / 70=sous marche -15 a -30% / 90+=>-30%
 - Si prix demande inconnu : deal_score = 50 (neutre)
-- REGLE: ne PAS baisser le deal_score pour suspicion d'arnaque (les doutes vont dans cons).
+- REGLE: ne PAS baisser le deal_score pour suspicion d'arnaque, ex-location, reconditionne (les doutes vont dans cons).
+- Si asking_price est franchement sous le marche (-30% ou plus) il faut OSER monter a 85-95.
 
 DEUX prix neufs distincts a remplir:
 
@@ -68,11 +69,31 @@ Plages typiques MSRP (ordre de grandeur):
 - Velo route carbone perf : 3000-12000 EUR
 - Velo junior premium 24/26" : 600-1500 EUR
 
+VARIANT TIERS (CRUCIAL pour msrp_eur — un meme modele a plusieurs versions):
+- "S-Works" (Specialized)       : TOP de gamme, 11000-15000 EUR.
+- "Pro" / "Pro AXS"             : haut de gamme, 7000-11000 EUR.
+- "Expert"                      : haut milieu, 5000-7500 EUR.
+- "Comp"                        : milieu, 3500-5500 EUR.
+- "Alloy" / "Alu"               : entree, 2500-4000 EUR.
+- "Frameset"                    : CADRE SEUL, ne pas confondre avec velo complet.
+- "M-Team", "M-LTD" (Orbea)     : top series, 9000-14000 EUR.
+- "X01" / "XX1" / "AXS"         : transmission haut de gamme.
+- Generation "S-Works" / "Master" / "M10" / "Team" => MSRP minimum 8000 EUR meme si web dit 2000.
+
+INDICES REVENDEUR / EX-LOCATION / RECONDITIONNE (a flagger en CONS sans baisser deal_score):
+- "MINT-Bikes", "Buycycle", "Rebike", "Upway", "MyVeloShop" : revendeurs pro de reconditionne, souvent ex-location.
+- Mots cles : "garantie X mois", "reconditionne", "occasion certifiee", "ex-location", "ex-flotte", "trustpilot".
+- "disponible a la location" dans titre annonce particulier = velo ex-location intensive (usure forte cachee).
+- Localisation publication != lieu reel du velo (ex: pub Bordeaux mais stock Aix) = revendeur multi-sites.
+
 CROSS-CHECK l'identite extraite avec ta connaissance catalogue. Exemples:
 - Orbea Rise H10 = TOUJOURS 29 pouces (corrige wheel_size si extracteur dit 27.5).
 - Commencal Clash 24 = 24 pouces junior (jamais adulte).
 - Specialized Stumpjumper EVO = mullet 29/27.5 ou full 29.
+- Specialized S-Works = TOUJOURS carbone full, jamais alu (corrige frame_material).
 Si tu connais avec certitude une caracteristique du modele, ECRASE l'extracteur.
+
+REGLE msrp_eur : ne renvoie null que si tu n'as VRAIMENT aucune idee du modele. Si tu connais la marque + modele + tier (ex S-Works) tu DOIS donner une fourchette plausible meme sans signal web fiable. Les MSRP web peuvent referencer d'autres variants — fie-toi d'abord au TIER reel du velo cible.
 
 PRIORITE pour estimated_market_eur (prix REVENTE occasion):
 1. Si comparables LBC fournis (ads similaires actuelles) : la mediane est le signal le plus fiable.
