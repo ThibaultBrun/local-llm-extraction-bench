@@ -13,6 +13,29 @@ from bike_agent import config
 from bike_agent.http_client import normalize_space
 
 
+VARIANT_TIERS = (
+    "S-Works", "Pro AXS", "Pro Carbon", "Pro", "Expert", "Comp", "Alloy", "Frameset",
+    "M-Team", "M-LTD", "M10", "M20", "M30", "M-LR",
+    "H10", "H20", "H30",
+    "Master", "Team", "LTD", "Race", "Limited",
+    "AXS", "GX", "X01", "XX1", "XTR",
+)
+
+
+def detect_variant_tier(text):
+    """Scan annonce text for known variant/tier keywords (e.g. S-Works, Pro,
+    Expert) that the schema-based extractor often drops. Returns the matched
+    label or None."""
+    if not text:
+        return None
+    lower = text.lower()
+    for tier in VARIANT_TIERS:
+        pattern = re.compile(r"(?<![a-z])" + re.escape(tier.lower()) + r"(?![a-z])")
+        if pattern.search(lower):
+            return tier
+    return None
+
+
 def extract_bike(model, annonce, timeout, verbose=False):
     start = time.time()
     if verbose:
@@ -32,6 +55,14 @@ def extract_bike(model, annonce, timeout, verbose=False):
     )
     data = json.loads(response["message"]["content"])
     identity = post_process(data, annonce)
+
+    annonce_text = annonce if isinstance(annonce, str) else (
+        f"{annonce.get('subject', '')} {annonce.get('body', '')}"
+    )
+    tier = detect_variant_tier(annonce_text)
+    if tier and not identity.get("version"):
+        identity["version"] = tier
+
     if verbose:
         print(f"[extract] identity={json.dumps(identity, ensure_ascii=False)}")
     return identity, time.time() - start
