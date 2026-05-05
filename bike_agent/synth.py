@@ -262,8 +262,14 @@ Tache : remplis TOUS les champs du schema.
 7. condition_score (0-100) : depuis le texte ("tres bon etat" ~80, "neuf" 95+, etc.).
 8. deal_score (0-100) : ecart prix_demande vs estimated_market_eur. 50 si prix inconnu.
 9. reasoning : 2-3 phrases (~200 mots max) expliquant le score + situant le modele.
-10. pros : 2-4 bullets concis (max ~10 mots/item).
-11. cons : 2-4 bullets concis (max ~10 mots/item).
+10. pros : 2-4 bullets concis (max ~10 mots/item). UNIQUEMENT des points substantiels :
+    composants haut de gamme, etat, garantie, factures, decote interessante, equipement specifique.
+    NE PAS lister : la ville, la date de publication, ou la categorie generique "VAE" / "VTT".
+11. cons : 2-4 bullets concis (max ~10 mots/item). Points negatifs SUBSTANTIELS uniquement :
+    usure visible, prix au-dessus marche, kilometrage eleve, signaux ex-location/refurb,
+    risque arnaque (prix trop bas), pieces obsoletes, manque de details.
+    NE JAMAIS lister la ville (ex: "Ville : Bordeaux"), la date de publication, ou les
+    informations purement administratives — ce sont des elements de contexte, PAS des cons.
 
 Sois rigoureux. Si l'identite est lacunaire, dis-le dans reasoning et donne une fourchette prudente.
 
